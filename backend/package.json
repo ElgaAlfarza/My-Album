@@ -1,0 +1,31 @@
+{
+  "name": "album-kenangan-backend",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Backend privat Album Kenangan Saya — satu keluarga, foto tidak boleh hilang.",
+  "scripts": {
+    "start": "node --use-system-ca src/server.js",
+    "dev": "node --use-system-ca --watch src/server.js",
+    "seed": "node --use-system-ca scripts/seed.js",
+    "backup": "node --use-system-ca src/jobs/run-backup.js",
+    "purge-trash": "node --use-system-ca src/jobs/run-purge.js"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.57.4",
+    "archiver": "^7.0.1",
+    "cors": "^2.8.5",
+    "dotenv": "^16.6.1",
+    "exifr": "^7.1.3",
+    "express": "^5.1.0",
+    "express-rate-limit": "^8.1.0",
+    "helmet": "^8.1.0",
+    "multer": "^2.0.2",
+    "node-cron": "^4.2.1",
+    "sharp": "^0.34.4",
+    "zod": "^4.1.11"
+  }
+}
