@@ -1,3 +1,4 @@
+import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import express from "express";
@@ -53,7 +54,8 @@ app.use(limiter);
 app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ extended: true, limit: "10mb" }));
 
-// Sajikan berkas statis frontend (index.html, css, js, assets)
+// Sajikan berkas statis frontend (public, index.html, css, js, assets)
+app.use(express.static(path.resolve(rootDir, "public")));
 app.use(express.static(rootDir));
 app.use("/local_storage", express.static(path.resolve(rootDir, "backend/local_storage")));
 
@@ -65,6 +67,10 @@ app.use("/api", apiRouter);
 
 // Halaman utama
 app.get("/", (req, res) => {
+  const publicHtml = path.resolve(rootDir, "public/index.html");
+  if (fs.existsSync(publicHtml)) {
+    return res.sendFile(publicHtml);
+  }
   res.sendFile(path.join(rootDir, "index.html"));
 });
 

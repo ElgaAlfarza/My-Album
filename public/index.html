@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Album Kenangan Saya</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400..700;1,6..72,400..700&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24..48,400..700,0..1,-50..200" rel="stylesheet">
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+  <a class="skip-link" href="#isi">Lewati ke isi</a>
+  <header class="site-header">
+    <div class="header-inner">
+      <a class="brand" href="./" data-nav="semua">
+        <img src="assets/logo.svg" alt="">
+        <span>Album Kenangan Saya</span>
+      </a>
+      <label class="search desktop-search">
+        <span class="icon material-symbols-outlined">search</span>
+        <input id="search" type="search" placeholder="Cari foto atau tahun..." autocomplete="off" aria-label="Cari foto atau tahun">
+      </label>
+      <nav class="nav-pills desktop-nav" aria-label="Menu utama">
+        <a href="#semua" data-nav="semua" class="is-active">Semua Foto</a>
+        <a href="#album" data-nav="album">Album Saya</a>
+        <a href="#favorit" data-nav="favorit">Favorit</a>
+      </nav>
+      <div class="header-actions">
+        <button class="btn btn-primary" id="add-photo" type="button">
+          <span class="material-symbols-outlined">add_photo_alternate</span>
+          <span class="btn-label">+ Tambah Foto</span>
+        </button>
+        <img class="avatar" src="https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=120&q=80" alt="Profil keluarga">
+        <button class="menu-toggle" id="menu-toggle" type="button" aria-label="Buka menu">
+          <span class="material-symbols-outlined">menu</span>
+        </button>
+      </div>
+    </div>
+    <nav class="mobile-nav" id="mobile-nav" aria-label="Menu ponsel">
+      <a href="#semua" data-nav="semua" class="btn btn-primary">Semua Foto</a>
+      <a href="#album" data-nav="album" class="btn btn-outline">Album Saya</a>
+      <a href="#favorit" data-nav="favorit" class="btn btn-outline">Favorit</a>
+    </nav>
+    <div class="mobile-search-bar">
+      <label class="search">
+        <span class="icon material-symbols-outlined">search</span>
+        <input id="search-mobile" type="search" placeholder="Cari foto atau tahun..." autocomplete="off" aria-label="Cari foto atau tahun">
+      </label>
+    </div>
+  </header>
+
+  <main>
+    <div class="glow glow-a"></div>
+    <div class="glow glow-b"></div>
+    <div class="wrap page" id="isi">
+      <section class="hero" id="hero">
+        <div>
+          <span class="kicker">
+            <span class="material-symbols-outlined">photo_album</span>
+            Ruang Kenangan Pribadi
+          </span>
+          <h1>Selamat Datang di Lemari Kenangan</h1>
+          <p class="lede">Tempat aman untuk menyimpan, merapikan, dan membuka kembali foto-foto berharga Anda bersama keluarga tercinta dengan tenang dan mudah.</p>
+        </div>
+        <div class="stat-card">
+          <div class="icon-wrap">
+            <span class="material-symbols-outlined" style="font-variation-settings:'FILL' 1">auto_stories</span>
+          </div>
+          <div>
+            <strong id="photo-count">6 Lembar Foto</strong>
+            <span>Tersimpan rapi &amp; abadi</span>
+          </div>
+        </div>
+      </section>
+
+      <section class="upload-panel" id="upload-panel">
+        <div class="upload-inner" id="upload-inner">
+          <div class="upload-copy">
+            <div class="upload-icon">
+              <span class="material-symbols-outlined" style="font-size:44px">add_a_photo</span>
+            </div>
+            <div>
+              <h2>Simpan Foto Kenangan Baru</h2>
+              <p>Tarik foto langsung ke sini atau tekan tombol di sebelah kanan.</p>
+              <div class="safe-note">
+                <span class="material-symbols-outlined">verified_user</span>
+                Format JPG &amp; PNG langsung tersimpan aman tanpa hilang
+              </div>
+            </div>
+          </div>
+          <div class="upload-cta">
+            <input accept="image/*" class="visually-hidden" id="foto-input" type="file" hidden>
+            <button class="btn btn-primary" id="pick-photo" type="button" style="min-height:56px;padding-inline:3rem">
+              <span class="material-symbols-outlined">file_upload</span>
+              + Pilih Foto dari HP / Komputer
+            </button>
+            <span class="hint">Cukup satu ketukan jari</span>
+          </div>
+        </div>
+      </section>
+
+      <div data-view="semua">
+        <section class="toolbar">
+          <div class="filters" id="filter-bar"></div>
+          <div class="view-switch">
+            <button class="is-active" id="mode-large" type="button">
+              <span class="material-symbols-outlined">aspect_ratio</span>
+              Foto Nyaman (Besar)
+            </button>
+            <button id="mode-compact" type="button">
+              <span class="material-symbols-outlined">grid_view</span>
+              Kisi Rapi
+            </button>
+          </div>
+        </section>
+        <section class="gallery" id="gallery-grid"></section>
+      </div>
+
+      <div data-view="album" hidden>
+        <section>
+          <h2>Album Saya</h2>
+          <p class="lede">Foto dikelompokkan seperti map kertas di lemari keluarga.</p>
+        </section>
+        <section class="album-grid" id="album-grid"></section>
+      </div>
+
+      <div data-view="favorit" hidden>
+        <section>
+          <h2>Tersimpan di Hati</h2>
+          <p class="lede">Hanya foto yang Anda tandai sebagai kenangan paling berharga.</p>
+        </section>
+        <section class="gallery" id="favorite-grid"></section>
+      </div>
+
+      <section class="help">
+        <div class="help-copy">
+          <div class="help-icon">
+            <span class="material-symbols-outlined" style="font-size:32px">support_agent</span>
+          </div>
+          <div>
+            <h4>Butuh bantuan melihat, mencetak, atau membagikan foto?</h4>
+            <p>Jangan ragu. Semua foto Anda sudah dicadangkan secara otomatis dan tidak akan hilang. Anda dapat meminta bantuan anak atau cucu dengan satu sentuhan.</p>
+          </div>
+        </div>
+        <div class="help-actions">
+          <button class="btn btn-outline" id="guide-btn" type="button">
+            <span class="material-symbols-outlined">menu_book</span>
+            Buku Panduan Besar
+          </button>
+          <button class="btn btn-terracotta" id="share-btn" type="button">
+            <span class="material-symbols-outlined">share</span>
+            Kirim ke WhatsApp Anak
+          </button>
+        </div>
+      </section>
+    </div>
+  </main>
+
+  <div class="modal" id="photo-modal" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+    <div class="modal-card">
+      <div class="modal-head">
+        <div>
+          <div class="place" id="modal-location">Lokasi Kenangan</div>
+          <h2 id="modal-title">Judul Foto</h2>
+        </div>
+        <button class="icon-btn" id="close-modal" type="button" aria-label="Tutup jendela">
+          <span class="material-symbols-outlined">close</span>
+        </button>
+      </div>
+      <div class="modal-frame">
+        <div class="frame">
+          <img id="modal-img" alt="">
+        </div>
+      </div>
+      <p class="modal-caption" id="modal-caption">“Keterangan kenangan foto...”</p>
+      <form class="photo-edit" id="photo-edit" hidden>
+        <label class="field">
+          <span>Judul kenangan</span>
+          <input id="edit-title" type="text" maxlength="80" autocomplete="off">
+        </label>
+        <label class="field">
+          <span>Cerita di balik foto</span>
+          <textarea id="edit-caption" rows="3" maxlength="240"></textarea>
+        </label>
+        <div class="field-row">
+          <label class="field">
+            <span>Tahun</span>
+            <input id="edit-year" type="number" min="1900" max="2100" inputmode="numeric">
+          </label>
+          <label class="field">
+            <span>Tempat</span>
+            <input id="edit-place" type="text" maxlength="80" autocomplete="off">
+          </label>
+        </div>
+        <label class="field">
+          <span>Simpan di album</span>
+          <select id="edit-album"></select>
+        </label>
+        <div class="modal-actions">
+          <button class="btn btn-primary" id="save-edit" type="submit">
+            <span class="material-symbols-outlined">save</span>
+            Simpan Keterangan
+          </button>
+          <button class="btn btn-outline" id="cancel-edit" type="button">Batal</button>
+        </div>
+      </form>
+      <div class="modal-actions" id="photo-actions">
+        <button class="btn btn-terracotta" id="modal-share-wa" type="button">
+          <span class="material-symbols-outlined">share</span>
+          Kirim ke WhatsApp Anak
+        </button>
+        <button class="btn btn-soft" id="zoom-more" type="button">
+          <span class="material-symbols-outlined">zoom_in</span>
+          Perbesar Lagi
+        </button>
+        <button class="btn btn-sage" id="edit-photo" type="button">
+          <span class="material-symbols-outlined">edit_note</span>
+          Ubah Keterangan
+        </button>
+        <button class="btn btn-primary" id="print-photo" type="button">
+          <span class="material-symbols-outlined">print</span>
+          Cetak Foto Ini
+        </button>
+        <button class="btn btn-outline" id="delete-photo" type="button">
+          <span class="material-symbols-outlined">delete</span>
+          Keluarkan dari Lemari
+        </button>
+        <button class="btn btn-secondary" id="back-modal" type="button">
+          <span class="material-symbols-outlined">arrow_back</span>
+          Kembali ke Lemari
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal" id="guide-modal" role="dialog" aria-modal="true" aria-labelledby="guide-title">
+    <div class="modal-card guide-card">
+      <div class="modal-head">
+        <div>
+          <div class="place">Panduan sederhana</div>
+          <h2 id="guide-title">Buku Panduan Besar</h2>
+        </div>
+        <button class="icon-btn" id="close-guide" type="button" aria-label="Tutup panduan">
+          <span class="material-symbols-outlined">close</span>
+        </button>
+      </div>
+      <ol class="guide-steps">
+        <li>Tekan <strong>+ Tambah Foto</strong> untuk menyimpan kenangan baru ke lemari.</li>
+        <li>Gunakan kotak pencarian atau tombol kategori untuk menemukan foto lama.</li>
+        <li>Tekan <strong>Suka Foto Ini</strong> agar kenangan tersimpan di halaman Favorit.</li>
+        <li>Tekan foto atau <strong>Lihat Ukuran Penuh</strong> jika ingin melihat lebih jelas, memperbesar, atau mencetak.</li>
+        <li>Tekan <strong>Ubah Keterangan</strong> untuk menulis judul, tahun, tempat, dan cerita foto.</li>
+        <li>Buka <strong>Album Saya</strong> untuk melihat foto yang sudah dikelompokkan seperti map kertas.</li>
+      </ol>
+      <div class="modal-actions">
+        <a class="btn btn-outline" id="guide-download-zip" href="/api/export" target="_blank" download style="text-decoration:none">
+          <span class="material-symbols-outlined">download</span>
+          Unduh Cadangan Foto (ZIP)
+        </a>
+        <button class="btn btn-primary" id="guide-done" type="button">Saya sudah paham</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal" id="confirm-modal" role="dialog" aria-modal="true" aria-labelledby="confirm-title">
+    <div class="modal-card confirm-card">
+      <h2 id="confirm-title">Keluarkan foto ini?</h2>
+      <p id="confirm-copy">Foto akan dikeluarkan dari lemari kenangan. Anda bisa membatalkan jika belum yakin.</p>
+      <div class="modal-actions">
+        <button class="btn btn-outline" id="confirm-no" type="button">Tidak, biarkan</button>
+        <button class="btn btn-terracotta" id="confirm-yes" type="button">Ya, keluarkan</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast" role="status"></div>
+
+  <footer class="site-footer">
+    <div class="wrap footer-inner">
+      <div>
+        <strong>Album Kenangan Saya</strong>
+        <p>Menjaga warisan kisah keluarga tetap abadi, tenang, dan mudah dijangkau.</p>
+      </div>
+      <span>Simpan Kenangan Indah Bersama Keluarga</span>
+    </div>
+  </footer>
+  <script src="js/app.js"></script>
+</body>
+</html>
