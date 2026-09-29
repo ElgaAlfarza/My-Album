@@ -278,7 +278,11 @@ export async function completeUpload(member, photoId) {
 
 export async function uploadDirect(member, file, body) {
   if (!file) throw badRequest("Belum ada foto yang dipilih.");
-  if (!["image/jpeg", "image/jpg", "image/png", "image/webp"].includes(file.mimetype)) {
+  const mime = (file.mimetype || "image/jpeg").toLowerCase();
+  const isImage =
+    ["image/jpeg", "image/jpg", "image/png", "image/webp", "image/pjpeg", "image/jfif"].includes(mime) ||
+    /\.(jpe?g|png|webp|jfif)$/i.test(file.originalname || "");
+  if (!isImage) {
     throw badRequest("Format yang diterima hanya JPG, PNG, atau WEBP.");
   }
   if (file.size > env.MAX_UPLOAD_BYTES) {
@@ -286,7 +290,11 @@ export async function uploadDirect(member, file, body) {
   }
 
   // Hitung tahun dan tanggal dari body (prioritas) atau EXIF
-  const exif = await readExifYear(file.buffer);
+  let exif = { takenYear: null, takenDate: null, fromExif: false };
+  try {
+    exif = await readExifYear(file.buffer);
+  } catch {}
+
   let takenYear = null;
   if (body.taken_year && Number(body.taken_year) > 1800) {
     takenYear = Number(body.taken_year);
@@ -301,18 +309,29 @@ export async function uploadDirect(member, file, body) {
 
   const cat = resolveCategory(body.category);
   const title = (body.title || safeFileStem(file.originalname) || "Kenangan Baru").slice(0, 120);
-  const ext = extensionFromMime(file.mimetype);
+  const ext = extensionFromMime(mime) || "jpg";
   const id = randomUUID();
   const originalPath = `originals/${id}/asli.${ext}`;
   const thumbPath = `thumbs/${id}/kecil.webp`;
   const displayPath = `display/${id}/layar.jpg`;
 
-  // Resize dari buffer yang sudah ada di memori — tidak perlu download ulang
-  const derived = await makeDerivatives(file.buffer);
+  // Resize dari buffer yang sudah ada di memori — aman dengan try/catch
+  let derived;
+  try {
+    derived = await makeDerivatives(file.buffer);
+  } catch (imgErr) {
+    console.warn("Peringatan resize Sharp, memakai buffer asli:", imgErr.message);
+    derived = {
+      width: null,
+      height: null,
+      thumbnailBuffer: file.buffer,
+      displayBuffer: file.buffer,
+    };
+  }
 
   // Upload semua file sekaligus secara paralel
   await Promise.all([
-    uploadBuffer(originalPath, file.buffer, file.mimetype),
+    uploadBuffer(originalPath, file.buffer, mime),
     uploadBuffer(thumbPath, derived.thumbnailBuffer, "image/webp"),
     uploadBuffer(displayPath, derived.displayBuffer, "image/jpeg"),
   ]);

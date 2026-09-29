@@ -712,115 +712,144 @@ function initUploadHandlers() {
       warm = false;
     }
 
-    toast("⏳ Sedang menyimpan foto ke lemari kenangan...");
-
-    try {
-      const fd = new FormData();
-      fd.append("photo", pendingUploadFile);
-      fd.append("title", title);
-      fd.append("caption", caption);
-      fd.append("place", place);
-      fd.append("album", album);
-      fd.append("category", category);
-      fd.append("chip", chip);
-      if (takenDate) fd.append("taken_date", takenDate);
-      if (takenYear) fd.append("taken_year", takenYear);
-      fd.append("pin", getAdminPin());
-
-      const res = await fetch("/api/photos/upload", {
-        method: "POST",
-        headers: { "x-family-pin": getAdminPin() },
-        body: fd,
-      });
-
-      const data = await res.json().catch(() => ({}));
-      if (res.ok && data.photo) {
-        const p = data.photo;
-        const newPhotoItem = {
-          id: p.id,
-          title: p.title || title,
-          caption: p.caption || caption,
-          place: p.place || place,
-          year: p.year || takenYear,
-          taken_date: p.taken_date || takenDate,
-          taken_date_label: p.taken_date_label || (takenDate || `Tahun ${takenYear}`),
-          category: p.category || category,
-          chip: p.chip || chip,
-          warm: p.warm !== undefined ? p.warm : warm,
-          liked: false,
-          album: p.album || album,
-          src: p.display_url || p.thumbnail_url || p.original_url || URL.createObjectURL(pendingUploadFile),
+    const saveLocally = () => {
+      try {
+        const reader = new FileReader();
+        reader.onload = () => {
+          try {
+            const localId = `baru-${Date.now()}`;
+            state.extras.unshift({
+              id: localId,
+              title,
+              caption,
+              place,
+              year: takenYear,
+              taken_date: takenDate,
+              taken_date_label: takenDate || `Tahun ${takenYear}`,
+              category,
+              chip,
+              warm,
+              liked: false,
+              album,
+              src: reader.result,
+            });
+            persist();
+            closeUploadModal();
+            setView("semua");
+            renderGallery();
+            if (state.view === "album") renderAlbums();
+            toast(`✅ Foto "${title}" berhasil disimpan di album "${album}"!`);
+          } catch (storageErr) {
+            console.error("Gagal simpan lokal:", storageErr);
+            toast("⚠️ Memori browser penuh. Silakan kurangi sebagian foto.");
+            if (submitBtn) {
+              submitBtn.disabled = false;
+              submitBtn.innerHTML = `<span class="material-symbols-outlined">save</span> Simpan ke Lemari Kenangan`;
+            }
+          }
         };
-
-        state.serverPhotos = [newPhotoItem, ...(state.serverPhotos || [])];
-        closeUploadModal();
-        setView("semua");
-        renderGallery();
-        if (state.view === "album") renderAlbums();
-        toast(`✅ Foto "${title}" berhasil disimpan di album "${album}"!`);
-        return;
-      } else {
-        const errMsg = data.message || `Gagal menyimpan foto (Status ${res.status}).`;
-        console.warn("Server upload response error:", errMsg);
-        toast(`⚠️ ${errMsg}. Mencoba simpan secara lokal...`);
-      }
-    } catch (err) {
-      console.warn("Upload server foto error:", err);
-      toast("⚠️ Koneksi server bermasalah, menyimpan foto secara lokal...");
-    }
-
-    // Fallback simpan lokal jika upload cloud gagal
-    try {
-      const reader = new FileReader();
-      reader.onload = () => {
-        try {
-          const localId = `baru-${Date.now()}`;
-          state.extras.unshift({
-            id: localId,
-            title,
-            caption,
-            place,
-            year: takenYear,
-            taken_date: takenDate,
-            taken_date_label: takenDate || `Tahun ${takenYear}`,
-            category,
-            chip,
-            warm,
-            liked: false,
-            album,
-            src: reader.result,
-          });
-          persist();
-          closeUploadModal();
-          setView("semua");
-          renderGallery();
-          if (state.view === "album") renderAlbums();
-          toast(`✅ Foto "${title}" berhasil disimpan di album "${album}" (mode perangkat)!`);
-        } catch (storageErr) {
-          console.error("Gagal simpan lokal:", storageErr);
-          toast("⚠️ Memori browser penuh. Hapus sebagian foto lama.");
+        reader.onerror = () => {
+          toast("❌ Gagal membaca berkas foto.");
           if (submitBtn) {
             submitBtn.disabled = false;
             submitBtn.innerHTML = `<span class="material-symbols-outlined">save</span> Simpan ke Lemari Kenangan`;
           }
-        }
-      };
-      reader.onerror = () => {
-        toast("❌ Gagal membaca berkas foto.");
+        };
+        reader.readAsDataURL(pendingUploadFile);
+      } catch (e) {
+        console.error("Local save error:", e);
         if (submitBtn) {
           submitBtn.disabled = false;
           submitBtn.innerHTML = `<span class="material-symbols-outlined">save</span> Simpan ke Lemari Kenangan`;
         }
-      };
-      reader.readAsDataURL(pendingUploadFile);
-    } catch (fallbackErr) {
-      console.error("Fallback error:", fallbackErr);
-      toast("❌ Gagal menyimpan foto.");
-      if (submitBtn) {
-        submitBtn.disabled = false;
-        submitBtn.innerHTML = `<span class="material-symbols-outlined">save</span> Simpan ke Lemari Kenangan`;
       }
-    }
+    };
+
+    const fd = new FormData();
+    fd.append("photo", pendingUploadFile);
+    fd.append("title", title);
+    fd.append("caption", caption);
+    fd.append("place", place);
+    fd.append("album", album);
+    fd.append("category", category);
+    fd.append("chip", chip);
+    if (takenDate) fd.append("taken_date", takenDate);
+    if (takenYear) fd.append("taken_year", takenYear);
+    fd.append("pin", getAdminPin());
+
+    const xhr = new XMLHttpRequest();
+    xhr.open("POST", "/api/photos/upload", true);
+    xhr.setRequestHeader("x-family-pin", getAdminPin());
+    xhr.timeout = 40000; // 40 detik timeout maksimal
+
+    xhr.upload.onprogress = (event) => {
+      if (event.lengthComputable && submitBtn) {
+        const pct = Math.round((event.loaded / event.total) * 100);
+        submitBtn.innerHTML = `⏳ Mengunggah foto (${pct}%)...`;
+      }
+    };
+
+    xhr.upload.onload = () => {
+      if (submitBtn) {
+        submitBtn.innerHTML = `⏳ Menyimpan ke lemari kenangan...`;
+      }
+    };
+
+    xhr.onload = () => {
+      try {
+        const data = JSON.parse(xhr.responseText || "{}");
+        if ((xhr.status === 200 || xhr.status === 201) && data.photo) {
+          const p = data.photo;
+          const newPhotoItem = {
+            id: p.id,
+            title: p.title || title,
+            caption: p.caption || caption,
+            place: p.place || place,
+            year: p.year || takenYear,
+            taken_date: p.taken_date || takenDate,
+            taken_date_label: p.taken_date_label || (takenDate || `Tahun ${takenYear}`),
+            category: p.category || category,
+            chip: p.chip || chip,
+            warm: p.warm !== undefined ? p.warm : warm,
+            liked: false,
+            album: p.album || album,
+            src: p.display_url || p.thumbnail_url || p.original_url || URL.createObjectURL(pendingUploadFile),
+          };
+
+          state.serverPhotos = [newPhotoItem, ...(state.serverPhotos || [])];
+          closeUploadModal();
+          setView("semua");
+          renderGallery();
+          if (state.view === "album") renderAlbums();
+          toast(`✅ Foto "${title}" berhasil disimpan di album "${album}"!`);
+          return;
+        }
+
+        // Jika server menolak atau ada error
+        const errMsg = data.message || `Server merespon kode ${xhr.status}`;
+        console.warn("Upload server tidak berhasil:", errMsg);
+        toast(`⚠️ ${errMsg}. Menyimpan cadangan perangkat...`);
+        saveLocally();
+      } catch (parseErr) {
+        console.warn("Error parsing response:", parseErr);
+        toast("⚠️ Respon server tidak terbaca. Menyimpan cadangan perangkat...");
+        saveLocally();
+      }
+    };
+
+    xhr.onerror = () => {
+      console.warn("XHR network error, falling back to local");
+      toast("⚠️ Jaringan tidak stabil, menyimpan ke memori perangkat...");
+      saveLocally();
+    };
+
+    xhr.ontimeout = () => {
+      console.warn("XHR timeout, falling back to local");
+      toast("⚠️ Waktu unggah habis, menyimpan foto ke memori perangkat...");
+      saveLocally();
+    };
+
+    xhr.send(fd);
   });
 }
 

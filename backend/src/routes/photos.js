@@ -23,7 +23,11 @@ const upload = multer({
     files: 1,
   },
   fileFilter: (req, file, cb) => {
-    if (["image/jpeg", "image/jpg", "image/png", "image/webp"].includes(file.mimetype)) {
+    const mime = (file.mimetype || "").toLowerCase();
+    const isImage =
+      ["image/jpeg", "image/jpg", "image/png", "image/webp", "image/pjpeg", "image/jfif"].includes(mime) ||
+      /\.(jpe?g|png|webp|jfif)$/i.test(file.originalname || "");
+    if (isImage) {
       cb(null, true);
     } else {
       cb(badRequest("Format foto harus JPG, PNG, atau WEBP."));
