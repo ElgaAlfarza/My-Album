@@ -14,8 +14,8 @@ let currentSettings = {
   hero_lede: "Tempat aman untuk menyimpan, merapikan, dan membuka kembali foto-foto berharga Anda bersama keluarga tercinta dengan tenang dan mudah.",
   footer_title: "Album Kenangan Saya",
   footer_text: "Menjaga warisan kisah keluarga tetap abadi, tenang, dan mudah dijangkau.",
-  admin_name: "Ayah (Admin)",
-  admin_avatar: "https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=120&q=80",
+  admin_name: "Elga Alfareza",
+  admin_avatar: "https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=256&q=80",
 };
 
 /**
@@ -39,7 +39,11 @@ settingsRouter.get("/", async (req, res) => {
 
         if (adminMember) {
           if (adminMember.nama) settings.admin_name = adminMember.nama;
-          if (adminMember.avatar_url) settings.admin_avatar = adminMember.avatar_url;
+          if (adminMember.avatar_url && !adminMember.avatar_url.includes("admin-1790655982077.webp")) {
+            settings.admin_avatar = adminMember.avatar_url;
+          } else {
+            settings.admin_avatar = currentSettings.admin_avatar;
+          }
         }
       } catch (err) {
         console.warn("Gagal membaca profil admin:", err.message);

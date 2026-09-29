@@ -680,11 +680,19 @@ function setAdminLoggedIn(val) {
   if (badge) badge.style.display = val ? "inline-block" : "none";
 }
 
+const DEFAULT_AVATAR = "https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=256&q=80";
+
 async function loadSettings() {
   // 1. Muat pengaturan lokal terlebih dahulu agar secepat kilat
   try {
     const cached = JSON.parse(localStorage.getItem(SETTINGS_STORAGE_KEY) || "null");
-    if (cached) applySettings(cached);
+    if (cached) {
+      if (cached.admin_avatar && cached.admin_avatar.includes("admin-1790655982077.webp")) {
+        cached.admin_avatar = DEFAULT_AVATAR;
+        localStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(cached));
+      }
+      applySettings(cached);
+    }
   } catch {}
 
   // 2. Sinkronkan dengan server
@@ -695,6 +703,9 @@ async function loadSettings() {
     if (res.ok) {
       const data = await res.json();
       if (data.settings) {
+        if (data.settings.admin_avatar && data.settings.admin_avatar.includes("admin-1790655982077.webp")) {
+          data.settings.admin_avatar = DEFAULT_AVATAR;
+        }
         applySettings(data.settings);
         localStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(data.settings));
       }
@@ -744,12 +755,14 @@ function applySettings(settings) {
   }
 
   if (settings.admin_avatar) {
+    let av = settings.admin_avatar;
+    if (av.includes("admin-1790655982077.webp")) av = DEFAULT_AVATAR;
     const headerAvatar = $("#header-avatar");
-    if (headerAvatar) headerAvatar.src = settings.admin_avatar;
+    if (headerAvatar) headerAvatar.src = av;
     const previewAvatar = $("#admin-avatar-preview");
-    if (previewAvatar) previewAvatar.src = settings.admin_avatar;
+    if (previewAvatar) previewAvatar.src = av;
     const urlInput = $("#admin-avatar-url-input");
-    if (urlInput) urlInput.value = settings.admin_avatar;
+    if (urlInput) urlInput.value = av;
   }
 }
 
@@ -1027,10 +1040,6 @@ function initAdmin() {
   });
 
   // Avatar pick & upload
-  $("#pick-avatar-btn")?.addEventListener("click", () => {
-    $("#admin-avatar-file-input")?.click();
-  });
-
   $("#admin-avatar-file-input")?.addEventListener("change", async (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -1038,8 +1047,13 @@ function initAdmin() {
     const localUrl = URL.createObjectURL(file);
     const prev = $("#admin-avatar-preview");
     if (prev) prev.src = localUrl;
+    const hAvatar = $("#header-avatar");
+    if (hAvatar) hAvatar.src = localUrl;
 
+    const statusEl = $("#avatar-upload-status");
+    if (statusEl) statusEl.textContent = "⏳ Sedang mengunggah foto profil...";
     toast("Mengunggah foto profil...");
+
     try {
       const fd = new FormData();
       fd.append("avatar", file);
@@ -1052,41 +1066,75 @@ function initAdmin() {
       const data = await res.json();
       if (res.ok && data.avatar_url) {
         if (prev) prev.src = data.avatar_url;
-        const hAvatar = $("#header-avatar");
         if (hAvatar) hAvatar.src = data.avatar_url;
         const urlInput = $("#admin-avatar-url-input");
         if (urlInput) urlInput.value = data.avatar_url;
+
+        try {
+          const cached = JSON.parse(localStorage.getItem(SETTINGS_STORAGE_KEY) || "{}");
+          cached.admin_avatar = data.avatar_url;
+          localStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(cached));
+        } catch {}
+
+        if (statusEl) statusEl.textContent = "✅ Foto profil tersimpan rapi!";
         toast("✅ Foto profil berhasil diganti dan disimpan!");
       } else {
-        const hAvatar = $("#header-avatar");
-        if (hAvatar) hAvatar.src = localUrl;
-        toast(data.message || "Foto profil diterapkan.");
+        if (statusEl) statusEl.textContent = "";
+        toast(data.message || "Gagal mengunggah foto profil.");
       }
     } catch {
-      const hAvatar = $("#header-avatar");
-      if (hAvatar) hAvatar.src = localUrl;
+      if (statusEl) statusEl.textContent = "Foto profil diterapkan di perangkat ini.";
       toast("Foto profil diterapkan di perangkat ini.");
+    } finally {
+      e.target.value = "";
     }
   });
 
-  $("#admin-avatar-url-input")?.addEventListener("input", (e) => {
-    const val = e.target.value.trim();
-    if (val) {
-      const prev = $("#admin-avatar-preview");
-      if (prev) prev.src = val;
+  // Tombol reset foto bawaan
+  $("#reset-avatar-btn")?.addEventListener("click", async () => {
+    const prev = $("#admin-avatar-preview");
+    if (prev) prev.src = DEFAULT_AVATAR;
+    const hAvatar = $("#header-avatar");
+    if (hAvatar) hAvatar.src = DEFAULT_AVATAR;
+    const urlInput = $("#admin-avatar-url-input");
+    if (urlInput) urlInput.value = DEFAULT_AVATAR;
+
+    const statusEl = $("#avatar-upload-status");
+    if (statusEl) statusEl.textContent = "Foto profil direset ke bawaan.";
+
+    try {
+      await fetch("/api/settings", {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          "x-family-pin": getAdminPin(),
+        },
+        body: JSON.stringify({ admin_avatar: DEFAULT_AVATAR }),
+      });
+      try {
+        const cached = JSON.parse(localStorage.getItem(SETTINGS_STORAGE_KEY) || "{}");
+        cached.admin_avatar = DEFAULT_AVATAR;
+        localStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(cached));
+      } catch {}
+      toast("✅ Foto profil dikembalikan ke foto bawaan.");
+    } catch {
+      toast("Foto profil dikembalikan.");
     }
   });
 
   // Simpan pengaturan tampilan
   $("#admin-settings-form")?.addEventListener("submit", async (e) => {
     e.preventDefault();
+    const rawAvatar = $("#admin-avatar-url-input")?.value.trim() || $("#admin-avatar-preview")?.src || "";
+    const cleanAvatar = rawAvatar.includes("admin-1790655982077.webp") ? DEFAULT_AVATAR : rawAvatar;
+
     const payload = {
       site_name: $("#set-site-name")?.value.trim() || "Album Kenangan Saya",
       kicker: $("#set-kicker")?.value.trim() || "Ruang Kenangan Pribadi",
       hero_title: $("#set-hero-title")?.value.trim() || "Selamat Datang di Lemari Kenangan",
       hero_lede: $("#set-hero-lede")?.value.trim() || "",
       admin_name: $("#set-admin-name")?.value.trim() || "Ayah (Admin)",
-      admin_avatar: $("#admin-avatar-url-input")?.value.trim() || $("#admin-avatar-preview")?.src || "",
+      admin_avatar: cleanAvatar,
       pin: getAdminPin(),
     };
 
