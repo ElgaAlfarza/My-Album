@@ -1,83 +1,4 @@
-const PHOTOS = [
-  {
-    id: "solo-1958",
-    title: "Pernikahan Eyang di Solo",
-    caption: "Momen sakral janji suci di rumah peninggalan kakek di Laweyan.",
-    place: "Solo, Jawa Tengah",
-    year: 1958,
-    category: "keluarga",
-    chip: "Keluarga",
-    warm: false,
-    liked: true,
-    album: "Masa Muda & Pernikahan",
-    src: "https://images.unsplash.com/photo-1519741497674-611481863552?auto=format&fit=crop&w=1400&q=80",
-  },
-  {
-    id: "glagah-1985",
-    title: "Liburan Pertama ke Pantai Glagah",
-    caption: "Anak-anak masih kecil, menempuh perjalanan jauh naik mobil kijang tua.",
-    place: "Kulon Progo, DIY",
-    year: 1985,
-    category: "liburan",
-    chip: "Liburan",
-    warm: true,
-    liked: false,
-    album: "Cucu & Liburan",
-    src: "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=1400&q=80",
-  },
-  {
-    id: "wisuda-2002",
-    title: "Momen Wisuda Anak Pertama",
-    caption: "Hari bahagia penuh syukur saat Mas Budi lulus kuliah di Yogyakarta.",
-    place: "Universitas Gadjah Mada",
-    year: 2002,
-    category: "keluarga",
-    chip: "Keluarga",
-    warm: false,
-    liked: true,
-    album: "Foto Keluarga",
-    src: "https://images.unsplash.com/photo-1523580494863-6f3031224c94?auto=format&fit=crop&w=1400&q=80",
-  },
-  {
-    id: "lebaran-2018",
-    title: "Sungkem Idul Fitri Bersama Cucu",
-    caption: "Rumah selalu hangat dan ramai gelak tawa saat hari lebaran tiba.",
-    place: "Rumah Utama, Semarang",
-    year: 2018,
-    category: "hari-raya",
-    chip: "Hari Raya",
-    warm: true,
-    liked: false,
-    album: "Hari Raya",
-    src: "https://images.unsplash.com/photo-1511895426328-dc8714191300?auto=format&fit=crop&w=1400&q=80",
-  },
-  {
-    id: "ambarawa-1994",
-    title: "Halaman Belakang Rumah Ambarawa",
-    caption: "Suasana asri sore hari, kakek duduk tenang ditemani secangkir teh melati.",
-    place: "Ambarawa, Jawa Tengah",
-    year: 1994,
-    category: "keluarga",
-    chip: "Kenangan Rumah",
-    warm: false,
-    liked: false,
-    album: "Foto Keluarga",
-    src: "https://images.unsplash.com/photo-1501004318641-b39e6451bec6?auto=format&fit=crop&w=1400&q=80",
-  },
-  {
-    id: "emas-2008",
-    title: "Ulang Tahun Pernikahan Emas",
-    caption: "50 tahun bersama dalam suka dan duka, tumpeng syukur sekeluarga besar.",
-    place: "Pendopo Keluarga",
-    year: 2008,
-    category: "keluarga",
-    chip: "Ulang Tahun",
-    warm: true,
-    liked: true,
-    album: "Masa Muda & Pernikahan",
-    src: "https://images.unsplash.com/photo-1464349095431-e9a21285b5f3?auto=format&fit=crop&w=1400&q=80",
-  },
-];
+const PHOTOS = [];
 
 const FILTERS = [
   { id: "semua", label: "Semua" },
@@ -111,7 +32,7 @@ const state = {
   filter: "semua",
   query: "",
   compact: false,
-  likes: new Set(saved?.likes || PHOTOS.filter((p) => p.liked).map((p) => p.id)),
+  likes: new Set(saved?.likes || []),
   extras: saved?.extras || [],
   serverPhotos: [],
   serverAlbums: [],
@@ -441,18 +362,36 @@ async function saveEdits(event) {
   toast("Keterangan kenangan sudah disimpan.");
 }
 
-function removeActivePhoto() {
+async function removeActivePhoto() {
   const id = state.activeId;
   if (!id) return;
+
   const extraIndex = state.extras.findIndex((photo) => photo.id === id);
   if (extraIndex >= 0) state.extras.splice(extraIndex, 1);
-  else state.hidden.add(id);
+
+  const serverIndex = state.serverPhotos.findIndex((photo) => photo.id === id);
+  if (serverIndex >= 0) state.serverPhotos.splice(serverIndex, 1);
+
+  state.hidden.add(id);
   delete state.edits[id];
   state.likes.delete(id);
   persist();
   closeModal();
   renderGallery();
   if (state.view === "album") renderAlbums();
+
+  // Jika foto tersimpan di server Supabase, sinkronkan penghapusan ke cloud
+  if (id && !id.startsWith("baru-")) {
+    try {
+      await fetch(`/api/photos/${id}`, {
+        method: "DELETE",
+        headers: { "x-family-pin": getAdminPin() },
+      });
+    } catch (err) {
+      console.warn("Gagal sinkronkan hapus foto ke server:", err);
+    }
+  }
+
   toast("Foto dikeluarkan dari lemari kenangan.");
 }
 
