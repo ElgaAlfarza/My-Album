@@ -5,12 +5,13 @@
   "type": "module",
   "description": "Album Kenangan Saya — Lemari Foto Privat Keluarga",
   "scripts": {
-    "start": "node --use-system-ca backend/src/server.js",
-    "dev": "node --use-system-ca --watch backend/src/server.js",
-    "backend": "node --use-system-ca backend/src/server.js",
-    "seed": "node --use-system-ca backend/scripts/seed.js",
-    "backup": "node --use-system-ca backend/src/jobs/run-backup.js",
-    "purge-trash": "node --use-system-ca backend/src/jobs/run-purge.js"
+    "build": "echo 'Build OK'",
+    "start": "node backend/src/server.js",
+    "dev": "node --watch backend/src/server.js",
+    "backend": "node backend/src/server.js",
+    "seed": "node backend/scripts/seed.js",
+    "backup": "node backend/src/jobs/run-backup.js",
+    "purge-trash": "node backend/src/jobs/run-purge.js"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.57.4",
