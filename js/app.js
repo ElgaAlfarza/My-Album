@@ -172,8 +172,10 @@ function allPhotos() {
 
 function matchesFilter(photo) {
   if (state.filter === "semua") return true;
-  if (state.filter === "pernikahan") return photo.album === "Masa Muda & Pernikahan";
-  if (state.filter === "liburan") return photo.category === "liburan" || photo.album === "Cucu & Liburan";
+  if (state.filter === "pernikahan") return photo.category === "pernikahan" || photo.album === "Masa Muda & Pernikahan";
+  if (state.filter === "liburan") return photo.category === "liburan" || photo.category === "cucu-liburan" || photo.album === "Cucu & Liburan";
+  if (state.filter === "hari-raya") return photo.category === "hari-raya" || photo.album === "Hari Raya";
+  if (state.filter === "keluarga") return photo.category === "keluarga" || photo.category === "kenangan-rumah" || photo.album === "Foto Keluarga";
   return photo.category === state.filter;
 }
 

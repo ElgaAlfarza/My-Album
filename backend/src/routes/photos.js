@@ -20,6 +20,7 @@ const upload = multer({
   storage: multer.memoryStorage(),
   limits: {
     fileSize: env.MAX_UPLOAD_BYTES,
+    files: 1,
   },
   fileFilter: (req, file, cb) => {
     if (["image/jpeg", "image/jpg", "image/png", "image/webp"].includes(file.mimetype)) {
@@ -30,6 +31,20 @@ const upload = multer({
   },
 });
 
+// Middleware wrapper untuk tangani error multer secara ramah
+function handleUpload(req, res, next) {
+  upload.single("photo")(req, res, (err) => {
+    if (!err) return next();
+    if (err.code === "LIMIT_FILE_SIZE") {
+      return res.status(400).json({ error: true, message: "Ukuran foto terlalu besar. Maksimal 20 MB." });
+    }
+    if (err.code === "LIMIT_UNEXPECTED_FILE") {
+      return res.status(400).json({ error: true, message: "Field foto tidak dikenali. Gunakan field 'photo'." });
+    }
+    next(err);
+  });
+}
+
 export const photosRouter = Router();
 
 // Seluruh rute foto membutuhkan autentikasi keluarga
@@ -38,12 +53,12 @@ photosRouter.use(requireFamily);
 /**
  * POST /api/photos/upload
  * Fleksibel:
- * 1. Jika dikirim multipart (field 'photo' atau 'file'): langsung proses kompresi, EXIF, dan simpan.
+ * 1. Jika dikirim multipart (field 'photo'): langsung proses kompresi, EXIF, dan simpan sekaligus.
  * 2. Jika dikirim JSON: generate signed upload URL untuk direct-to-storage upload.
  */
-photosRouter.post("/upload", upload.single("photo"), async (req, res, next) => {
+photosRouter.post("/upload", handleUpload, async (req, res, next) => {
   try {
-    const file = req.file || (req.files && req.files[0]);
+    const file = req.file;
 
     if (!isSupabaseConfigured()) {
       if (file) {
@@ -54,12 +69,12 @@ photosRouter.post("/upload", upload.single("photo"), async (req, res, next) => {
     }
 
     if (file) {
-      // Direct upload multipart
+      // Direct upload: resize + simpan sekaligus, tanpa roundtrip download
       const result = await uploadDirect(req.member, file, req.body);
       return res.status(201).json(result);
     }
 
-    // Direct-to-storage signed URL flow
+    // Direct-to-storage signed URL flow (untuk client yang mau upload langsung ke Supabase)
     const init = await initUpload(req.member, req.body);
     res.status(201).json(init);
   } catch (err) {

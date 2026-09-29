@@ -284,21 +284,70 @@ export async function uploadDirect(member, file, body) {
   if (file.size > env.MAX_UPLOAD_BYTES) {
     throw badRequest("Ukuran foto terlalu besar. Maksimal 20 MB.");
   }
-  const init = await initUpload(member, {
-    filename: file.originalname,
-    mime_type: file.mimetype,
-    title: body.title,
-    caption: body.caption,
-    place: body.place,
-    category: body.category,
-    chip: body.chip,
-    taken_year: body.taken_year,
-    taken_date: body.taken_date,
-    album: body.album,
-    album_id: body.album_id,
-  });
-  await uploadBuffer(init.path, file.buffer, file.mimetype);
-  const photo = await completeUpload(member, init.photo_id);
+
+  // Hitung tahun dan tanggal dari body (prioritas) atau EXIF
+  const exif = await readExifYear(file.buffer);
+  let takenYear = null;
+  if (body.taken_year && Number(body.taken_year) > 1800) {
+    takenYear = Number(body.taken_year);
+  } else if (body.taken_date) {
+    takenYear = new Date(body.taken_date).getFullYear();
+  } else if (exif.takenYear) {
+    takenYear = exif.takenYear;
+  } else {
+    takenYear = new Date().getFullYear();
+  }
+  const takenDate = body.taken_date || exif.takenDate || `${takenYear}-01-01`;
+
+  const cat = resolveCategory(body.category);
+  const title = (body.title || safeFileStem(file.originalname) || "Kenangan Baru").slice(0, 120);
+  const ext = extensionFromMime(file.mimetype);
+  const id = randomUUID();
+  const originalPath = `originals/${id}/asli.${ext}`;
+  const thumbPath = `thumbs/${id}/kecil.webp`;
+  const displayPath = `display/${id}/layar.jpg`;
+
+  // Resize dari buffer yang sudah ada di memori — tidak perlu download ulang
+  const derived = await makeDerivatives(file.buffer);
+
+  // Upload semua file sekaligus secara paralel
+  await Promise.all([
+    uploadBuffer(originalPath, file.buffer, file.mimetype),
+    uploadBuffer(thumbPath, derived.thumbnailBuffer, "image/webp"),
+    uploadBuffer(displayPath, derived.displayBuffer, "image/jpeg"),
+  ]);
+
+  // Simpan ke database langsung dengan status ready
+  const { data: inserted, error } = await adminDb
+    .from("photos")
+    .insert({
+      id,
+      uploader_id: member.id,
+      status: "ready",
+      original_path: originalPath,
+      thumbnail_path: thumbPath,
+      display_path: displayPath,
+      mime_type: file.mimetype,
+      title,
+      caption: body.caption || "Baru saja disimpan ke lemari kenangan keluarga.",
+      place: body.place || "Album Pribadi",
+      category: cat.id,
+      chip: body.chip || cat.chip,
+      taken_year: takenYear,
+      taken_date: takenDate,
+      year_from_exif: exif.fromExif && !body.taken_year && !body.taken_date,
+      width: derived.width,
+      height: derived.height,
+      file_size_bytes: file.size,
+    })
+    .select("id")
+    .single();
+  if (error) throw error;
+
+  // Tautkan ke album
+  await attachAlbum(inserted.id, body.album_id, body.album || cat.defaultAlbum, cat.defaultAlbum);
+
+  const photo = await getPhoto(inserted.id, member);
   return {
     photo,
     message: "Foto berhasil disimpan dengan aman ke dalam lemari.",
