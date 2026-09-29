@@ -93,11 +93,17 @@ function allPhotos() {
 
 function matchesFilter(photo) {
   if (state.filter === "semua") return true;
+  // Filter berdasarkan nama album custom (misal: "My Friend", dll)
+  if (state.filter.startsWith("album:")) {
+    const albumName = state.filter.slice(6);
+    return photo.album === albumName;
+  }
   if (state.filter === "pernikahan") return photo.category === "pernikahan" || photo.album === "Masa Muda & Pernikahan";
   if (state.filter === "liburan") return photo.category === "liburan" || photo.category === "cucu-liburan" || photo.album === "Cucu & Liburan";
   if (state.filter === "hari-raya") return photo.category === "hari-raya" || photo.album === "Hari Raya";
   if (state.filter === "keluarga") return photo.category === "keluarga" || photo.category === "kenangan-rumah" || photo.album === "Foto Keluarga";
   return photo.category === state.filter;
+
 }
 
 function matchesQuery(photo) {
@@ -911,17 +917,25 @@ function init() {
     const album = e.target.closest("[data-open-album]");
     if (album) {
       const name = album.dataset.openAlbum;
-      const map = {
+      const standardMap = {
         "Foto Keluarga": "keluarga",
         "Masa Muda & Pernikahan": "pernikahan",
         "Hari Raya": "hari-raya",
         "Cucu & Liburan": "liburan",
       };
-      state.filter = map[name] || "semua";
+      if (standardMap[name]) {
+        state.filter = standardMap[name];
+        $$("[data-filter]").forEach((btn) => {
+          btn.classList.toggle("is-active", btn.dataset.filter === state.filter);
+        });
+      } else {
+        // Album custom: filter berdasarkan nama album langsung
+        state.filter = `album:${name}`;
+        $$("[data-filter]").forEach((btn) => btn.classList.remove("is-active"));
+        const allBtn = $("#filter-all");
+        if (allBtn) allBtn.classList.add("is-active");
+      }
       setView("semua");
-      $$("[data-filter]").forEach((btn) => {
-        btn.classList.toggle("is-active", btn.dataset.filter === state.filter);
-      });
       renderGallery();
     }
   });
