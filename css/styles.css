@@ -40,12 +40,15 @@
 *::before,
 *::after {
   box-sizing: border-box;
+  min-width: 0;
 }
 
 html,
 body {
   margin: 0;
   padding: 0;
+  max-width: 100%;
+  overflow-x: hidden;
 }
 
 body {
@@ -59,6 +62,15 @@ body {
   line-height: 1.625;
   -webkit-font-smoothing: antialiased;
 }
+
+main {
+  flex: 1;
+  position: relative;
+  overflow-x: hidden;
+  max-width: 100%;
+  width: 100%;
+}
+
 
 img {
   max-width: 100%;
@@ -328,11 +340,8 @@ a {
   gap: 0.75rem;
 }
 
-main {
-  flex: 1;
-  position: relative;
-  overflow: hidden;
-}
+
+
 
 .glow {
   position: absolute;
@@ -363,6 +372,14 @@ main {
   padding: var(--space-lg) 0 var(--space-xl);
   display: grid;
   gap: var(--space-xl);
+  min-width: 0;
+  max-width: 100%;
+  width: 100%;
+}
+
+.page > * {
+  min-width: 0;
+  max-width: 100%;
 }
 
 .hero {
@@ -452,6 +469,9 @@ h1 {
   border-radius: var(--radius);
   box-shadow: var(--shadow-1);
   padding: var(--space-md);
+  min-width: 0;
+  max-width: 100%;
+  box-sizing: border-box;
 }
 
 .upload-inner {
@@ -464,6 +484,9 @@ h1 {
   border-radius: var(--radius);
   border: 1.5px dashed transparent;
   transition: border-color 0.2s ease, background 0.2s ease;
+  min-width: 0;
+  max-width: 100%;
+  box-sizing: border-box;
 }
 
 .upload-inner.is-drag {
@@ -475,6 +498,8 @@ h1 {
   display: flex;
   align-items: center;
   gap: var(--space-md);
+  min-width: 0;
+  max-width: 100%;
 }
 
 .upload-icon {
@@ -488,11 +513,13 @@ h1 {
 .upload-copy h2 {
   font-size: 24px;
   line-height: 32px;
+  word-break: break-word;
 }
 
 .upload-copy p {
   margin: 0.35rem 0 0;
   color: var(--on-surface-muted);
+  word-break: break-word;
 }
 
 .safe-note {
@@ -503,6 +530,7 @@ h1 {
   color: var(--primary);
   font-size: 15px;
   font-weight: 500;
+  word-break: break-word;
 }
 
 .upload-cta {
@@ -510,6 +538,16 @@ h1 {
   justify-items: center;
   gap: 0.4rem;
   flex-shrink: 0;
+  min-width: 0;
+  max-width: 100%;
+}
+
+#pick-photo {
+  min-height: 54px;
+  padding: 0.75rem 2.25rem;
+  white-space: normal;
+  text-align: center;
+  max-width: 100%;
 }
 
 .upload-cta .hint {
@@ -522,6 +560,8 @@ h1 {
   align-items: center;
   justify-content: space-between;
   gap: var(--space-md);
+  min-width: 0;
+  max-width: 100%;
 }
 
 .filters {
@@ -529,6 +569,9 @@ h1 {
   gap: var(--space-xs);
   overflow-x: auto;
   padding-bottom: 0.25rem;
+  min-width: 0;
+  max-width: 100%;
+  flex: 1 1 auto;
 }
 
 .filter-btn {
@@ -1130,13 +1173,37 @@ h1 {
 
 @media (max-width: 767px) {
   html, body {
-    overflow-x: hidden;
+    overflow-x: hidden !important;
+    max-width: 100vw !important;
+    width: 100% !important;
+  }
+
+  .glow {
+    display: none !important;
+  }
+
+  main {
+    overflow-x: hidden !important;
+    max-width: 100% !important;
+    width: 100% !important;
   }
 
   .header-inner,
   .wrap {
-    width: calc(100% - 1.5rem) !important;
-    max-width: calc(100% - 1.5rem) !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    padding-inline: 1rem !important;
+    box-sizing: border-box !important;
+    margin-inline: 0 !important;
+  }
+
+  .page {
+    overflow-x: hidden !important;
+    max-width: 100% !important;
+    width: 100% !important;
+    min-width: 0 !important;
+    padding: var(--space-md) 0 var(--space-lg) !important;
+    gap: var(--space-lg) !important;
   }
 
   .header-inner {
@@ -1147,11 +1214,15 @@ h1 {
   .brand img {
     width: 2rem;
     height: 2rem;
+    flex-shrink: 0;
   }
 
   .brand span {
-    font-size: 17px !important;
-    max-width: calc(100vw - 190px);
+    font-size: 16px !important;
+    max-width: min(190px, calc(100vw - 165px)) !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    white-space: nowrap !important;
   }
 
   .btn-label {
@@ -1167,6 +1238,7 @@ h1 {
 
   .header-actions {
     gap: 0.35rem;
+    flex-shrink: 0;
   }
 
   .menu-toggle {
@@ -1179,6 +1251,10 @@ h1 {
     height: 2rem;
   }
 
+  .mobile-search-bar {
+    padding: 0 1rem 0.75rem !important;
+  }
+
   .hero,
   .upload-inner,
   .toolbar,
@@ -1186,122 +1262,232 @@ h1 {
   .help-copy,
   .card-actions,
   .footer-inner {
-    flex-direction: column;
-    align-items: stretch;
+    flex-direction: column !important;
+    align-items: stretch !important;
   }
 
   .hero {
-    align-items: flex-start;
-    gap: 1.25rem;
+    gap: 1rem !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+  }
+
+  .hero > div {
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
   }
 
   h1 {
-    font-size: 26px !important;
+    font-size: clamp(22px, 5.5vw, 26px) !important;
     line-height: 1.25 !important;
+    word-break: break-word !important;
+    overflow-wrap: break-word !important;
   }
 
   .lede {
-    font-size: 15px !important;
-    line-height: 23px !important;
+    font-size: 14.5px !important;
+    line-height: 22px !important;
+    max-width: 100% !important;
+    word-break: break-word !important;
+    overflow-wrap: break-word !important;
+    margin-top: 0.4rem !important;
   }
 
   .stat-card {
-    width: 100%;
+    width: 100% !important;
+    max-width: 100% !important;
+    flex-shrink: 1 !important;
+    box-sizing: border-box !important;
   }
 
   .upload-panel {
-    padding: var(--space-sm);
+    padding: 0.75rem !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
   }
 
   .upload-inner {
-    padding: 1.25rem 1rem;
-    gap: 1rem;
+    padding: 1.25rem 0.85rem !important;
+    gap: 1rem !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
   }
 
   .upload-copy {
-    flex-direction: column;
-    text-align: center;
-    gap: 0.75rem;
+    flex-direction: column !important;
+    text-align: center !important;
+    align-items: center !important;
+    gap: 0.75rem !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+  }
+
+  .upload-copy > div {
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
   }
 
   .upload-icon {
-    width: 3.5rem;
-    height: 3.5rem;
-    margin: 0 auto;
+    width: 3.5rem !important;
+    height: 3.5rem !important;
+    margin: 0 auto !important;
+    flex-shrink: 0 !important;
   }
 
   .upload-copy h2 {
-    font-size: 20px;
-    line-height: 26px;
+    font-size: 19px !important;
+    line-height: 25px !important;
+    word-break: break-word !important;
+    overflow-wrap: break-word !important;
+  }
+
+  .upload-copy p {
+    font-size: 13.5px !important;
+    line-height: 20px !important;
+    word-break: break-word !important;
+    overflow-wrap: break-word !important;
   }
 
   .safe-note {
-    justify-content: center;
-    font-size: 13px;
+    justify-content: center !important;
+    font-size: 12.5px !important;
+    text-align: center !important;
+    word-break: break-word !important;
+    overflow-wrap: break-word !important;
+  }
+
+  .upload-cta {
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+  }
+
+  #pick-photo,
+  .upload-cta .btn {
+    width: 100% !important;
+    min-height: 48px !important;
+    padding: 0.65rem 1rem !important;
+    font-size: 14.5px !important;
+    box-sizing: border-box !important;
+    white-space: normal !important;
+    text-align: center !important;
+    line-height: 1.3 !important;
   }
 
   .toolbar {
-    gap: 0.75rem;
+    gap: 0.75rem !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
   }
 
   .filters {
-    width: 100%;
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
-    padding-bottom: 0.5rem;
-    scrollbar-width: none;
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+    padding-bottom: 0.5rem !important;
+    scrollbar-width: none !important;
   }
 
   .filters::-webkit-scrollbar {
-    display: none;
+    display: none !important;
   }
 
   .filter-btn {
-    min-height: 42px;
-    padding: 0.4rem 1rem;
-    font-size: 14px;
-    flex-shrink: 0;
+    min-height: 40px !important;
+    padding: 0.35rem 0.9rem !important;
+    font-size: 13.5px !important;
+    flex-shrink: 0 !important;
   }
 
   .view-switch {
-    align-self: center;
-    width: 100%;
-    justify-content: center;
+    width: 100% !important;
+    max-width: 100% !important;
+    justify-content: center !important;
   }
 
   .view-switch button {
-    flex: 1;
-    justify-content: center;
-    font-size: 13px;
-    min-height: 40px;
-    padding: 0.35rem 0.5rem;
+    flex: 1 1 50% !important;
+    justify-content: center !important;
+    font-size: 12.5px !important;
+    min-height: 38px !important;
+    padding: 0.3rem 0.5rem !important;
   }
 
   .gallery,
   .gallery.is-compact,
   .album-grid {
-    grid-template-columns: 1fr;
-    gap: 1rem;
+    grid-template-columns: minmax(0, 1fr) !important;
+    gap: 1rem !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
   }
 
   .photo-card {
-    padding: 0.85rem;
-    gap: 0.85rem;
+    padding: 0.75rem !important;
+    gap: 0.75rem !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    box-sizing: border-box !important;
   }
 
   .mount {
-    padding: 0.5rem;
+    padding: 0.5rem !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
   }
 
-  .upload-cta .btn,
+  .help {
+    padding: 1.25rem 0.85rem !important;
+    gap: 1rem !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
+  }
+
+  .help-copy {
+    text-align: center !important;
+    align-items: center !important;
+    gap: 0.75rem !important;
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+
+  .help-icon {
+    margin: 0 auto !important;
+    flex-shrink: 0 !important;
+  }
+
+  .help h4,
+  .help p {
+    word-break: break-word !important;
+    overflow-wrap: break-word !important;
+  }
+
+  .help-actions {
+    flex-direction: column !important;
+    width: 100% !important;
+    gap: 0.5rem !important;
+  }
+
   .card-actions .btn,
   .help-actions .btn,
   .modal-actions .btn {
-    width: 100%;
+    width: 100% !important;
   }
 
   .field-row {
-    grid-template-columns: 1fr;
+    grid-template-columns: 1fr !important;
   }
 
   /* Modals on mobile */
