@@ -17,7 +17,7 @@ export async function requireFamily(req, res, next) {
   try {
     const header = req.get("authorization") || "";
     const memberHeader = req.get("x-family-member-id") || req.get("x-family-member");
-    const pinHeader = req.get("x-family-pin");
+    const pinHeader = req.get("x-family-pin") || req.body?.pin || req.body?.old_pin || req.query?.pin;
     const token = header.startsWith("Bearer ") ? header.slice(7) : null;
 
     // 1. Supabase Auth JWT

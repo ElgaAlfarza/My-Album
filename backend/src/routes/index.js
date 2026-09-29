@@ -25,5 +25,6 @@ apiRouter.use("/stats", statsRouter);
 apiRouter.use("/share", shareRouter);
 apiRouter.use("/export", exportRouter);
 apiRouter.use("/settings", settingsRouter);
+apiRouter.use("/members", authRouter);
 apiRouter.use("/auth", authRouter);
 apiRouter.use("/", authRouter);

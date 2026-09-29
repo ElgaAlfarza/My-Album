@@ -68,10 +68,10 @@ settingsRouter.get("/", async (req, res) => {
 });
 
 /**
- * PUT /api/settings
+ * PUT & POST /api/settings
  * Mengubah nama web, sambutan, foto profil, dan nama admin (khusus admin)
  */
-settingsRouter.put("/", requireFamily, requireAdmin, async (req, res, next) => {
+const handleSaveSettings = async (req, res, next) => {
   try {
     const {
       site_name,
@@ -133,4 +133,7 @@ settingsRouter.put("/", requireFamily, requireAdmin, async (req, res, next) => {
   } catch (err) {
     next(err);
   }
-});
+};
+
+settingsRouter.put("/", requireFamily, requireAdmin, handleSaveSettings);
+settingsRouter.post("/", requireFamily, requireAdmin, handleSaveSettings);

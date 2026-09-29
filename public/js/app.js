@@ -1043,6 +1043,7 @@ function initAdmin() {
     try {
       const fd = new FormData();
       fd.append("avatar", file);
+      fd.append("pin", getAdminPin());
       const res = await fetch("/api/members/avatar", {
         method: "POST",
         headers: { "x-family-pin": getAdminPin() },
@@ -1059,7 +1060,7 @@ function initAdmin() {
       } else {
         const hAvatar = $("#header-avatar");
         if (hAvatar) hAvatar.src = localUrl;
-        toast("Foto profil diterapkan.");
+        toast(data.message || "Foto profil diterapkan.");
       }
     } catch {
       const hAvatar = $("#header-avatar");
@@ -1086,6 +1087,7 @@ function initAdmin() {
       hero_lede: $("#set-hero-lede")?.value.trim() || "",
       admin_name: $("#set-admin-name")?.value.trim() || "Ayah (Admin)",
       admin_avatar: $("#admin-avatar-url-input")?.value.trim() || $("#admin-avatar-preview")?.src || "",
+      pin: getAdminPin(),
     };
 
     applySettings(payload);
@@ -1195,9 +1197,9 @@ function initAdmin() {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "x-family-pin": getAdminPin(),
+          "x-family-pin": oldPin || getAdminPin(),
         },
-        body: JSON.stringify({ old_pin: oldPin, new_pin: newPin }),
+        body: JSON.stringify({ old_pin: oldPin, new_pin: newPin, pin: oldPin }),
       });
       const data = await res.json();
       if (res.ok && data.ok) {

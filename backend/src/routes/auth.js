@@ -87,10 +87,10 @@ authRouter.post("/members", requireFamily, requireAdmin, async (req, res, next) 
 });
 
 /**
- * POST /api/members/avatar
+ * POST /api/members/avatar dan /api/auth/avatar
  * Unggah dan perbarui foto profil avatar admin/keluarga
  */
-authRouter.post("/avatar", requireFamily, requireAdmin, avatarUpload.single("avatar"), async (req, res, next) => {
+authRouter.post(["/avatar", "/members/avatar"], avatarUpload.single("avatar"), requireFamily, requireAdmin, async (req, res, next) => {
   try {
     const file = req.file;
     if (!file) throw badRequest("Berkas foto profil wajib diunggah.");
