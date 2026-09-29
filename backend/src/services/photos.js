@@ -167,6 +167,17 @@ export async function initUpload(member, body) {
   const id = randomUUID();
   const original_path = `originals/${id}/asli.${ext}`;
 
+  let takenYear = null;
+  if (body.taken_year && Number(body.taken_year) > 1800) {
+    takenYear = Number(body.taken_year);
+  } else if (body.taken_date) {
+    takenYear = new Date(body.taken_date).getFullYear();
+  } else {
+    takenYear = new Date().getFullYear();
+  }
+
+  const takenDate = body.taken_date || (takenYear ? `${takenYear}-01-01` : null);
+
   const { data, error } = await adminDb
     .from("photos")
     .insert({
@@ -180,7 +191,8 @@ export async function initUpload(member, body) {
       place: body.place || "Album Pribadi",
       category: cat.id,
       chip: body.chip || cat.chip,
-      taken_year: body.taken_year ? Number(body.taken_year) : new Date().getFullYear(),
+      taken_year: takenYear,
+      taken_date: takenDate,
     })
     .select("id")
     .single();
@@ -209,12 +221,18 @@ async function attachAlbum(photoId, albumId, albumName, fallbackName) {
     album = found.data;
   }
   if (!album && albumName) {
-    const found = await adminDb.from("albums").select("id, nama").eq("nama", albumName).maybeSingle();
+    const found = await adminDb.from("albums").select("id, nama").ilike("nama", albumName.trim()).maybeSingle();
     album = found.data;
   }
   if (!album && fallbackName) {
-    const found = await adminDb.from("albums").select("id, nama").eq("nama", fallbackName).maybeSingle();
+    const found = await adminDb.from("albums").select("id, nama").ilike("nama", fallbackName.trim()).maybeSingle();
     album = found.data;
+  }
+  if (!album && albumName) {
+    try {
+      const created = await adminDb.from("albums").insert({ nama: albumName.trim() }).select("id, nama").maybeSingle();
+      album = created.data;
+    } catch {}
   }
   if (!album) return;
   await adminDb.from("album_photos").upsert({ album_id: album.id, photo_id: photoId });
@@ -235,8 +253,9 @@ export async function completeUpload(member, photoId) {
   await uploadBuffer(thumbPath, derived.thumbnailBuffer, "image/webp");
   await uploadBuffer(displayPath, derived.displayBuffer, "image/jpeg");
 
-  const takenYear = row.taken_year && !exif.fromExif ? row.taken_year : exif.takenYear || row.taken_year;
-  const takenDate = exif.takenDate || row.taken_date;
+  // Prioritaskan tanggal dan tahun yang dipilih pengguna secara sadar saat mengunggah foto
+  const takenYear = row.taken_year || exif.takenYear || new Date().getFullYear();
+  const takenDate = row.taken_date || exif.takenDate || null;
 
   const { error } = await adminDb
     .from("photos")
@@ -274,6 +293,7 @@ export async function uploadDirect(member, file, body) {
     category: body.category,
     chip: body.chip,
     taken_year: body.taken_year,
+    taken_date: body.taken_date,
     album: body.album,
     album_id: body.album_id,
   });

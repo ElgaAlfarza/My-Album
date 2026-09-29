@@ -113,6 +113,8 @@ const state = {
   compact: false,
   likes: new Set(saved?.likes || PHOTOS.filter((p) => p.liked).map((p) => p.id)),
   extras: saved?.extras || [],
+  serverPhotos: [],
+  serverAlbums: [],
   edits: saved?.edits || {},
   hidden: new Set(saved?.hidden || []),
   zoomed: false,
@@ -154,9 +156,18 @@ function albumMeta(name) {
 }
 
 function allPhotos() {
-  return [...PHOTOS, ...state.extras]
-    .filter((photo) => !state.hidden.has(photo.id))
-    .map((photo) => ({ ...photo, ...(state.edits[photo.id] || {}) }));
+  const serverPhotos = state.serverPhotos || [];
+  const combined = [...serverPhotos, ...state.extras, ...PHOTOS];
+  const seen = new Set();
+  const list = [];
+  for (const photo of combined) {
+    if (seen.has(photo.id)) continue;
+    seen.add(photo.id);
+    if (!state.hidden.has(photo.id)) {
+      list.push({ ...photo, ...(state.edits[photo.id] || {}) });
+    }
+  }
+  return list;
 }
 
 function matchesFilter(photo) {
@@ -199,13 +210,14 @@ function icon(name, filled = false) {
 function photoCard(photo) {
   const liked = state.likes.has(photo.id);
   const title = escapeHtml(photo.title);
+  const dateBadge = photo.taken_date_label || (photo.year ? `Tahun ${photo.year}` : "");
   return `
     <article class="photo-card" data-id="${escapeHtml(photo.id)}">
       <button class="mount" type="button" data-open="${escapeHtml(photo.id)}" aria-label="Lihat ${title} ukuran penuh">
         <div class="frame">
           <img src="${photo.src}" alt="${title}">
-          <span class="chip ${photo.warm ? "is-warm" : ""}">${escapeHtml(photo.chip)}</span>
-          <span class="year">Tahun ${escapeHtml(photo.year)}</span>
+          <span class="chip ${photo.warm ? "is-warm" : ""}">${escapeHtml(photo.chip || photo.album || "Keluarga")}</span>
+          ${dateBadge ? `<span class="year">${escapeHtml(dateBadge)}</span>` : ""}
         </div>
       </button>
       <div class="card-copy">
@@ -325,9 +337,10 @@ function setView(view) {
 }
 
 function fillModal(photo) {
-  $("#modal-title").textContent = `${photo.title} (${photo.year})`;
+  const dateStr = photo.taken_date_label || (photo.year ? `Tahun ${photo.year}` : "");
+  $("#modal-title").textContent = `${photo.title}${dateStr ? ` (${dateStr})` : ""}`;
   $("#modal-caption").textContent = `“${photo.caption}”`;
-  $("#modal-location").textContent = `📍 ${photo.place}`;
+  $("#modal-location").textContent = `📍 ${photo.place || "Album Pribadi"} • 📁 ${photo.album || "Foto Keluarga"}`;
   const img = $("#modal-img");
   img.src = photo.src;
   img.alt = photo.title;
@@ -344,9 +357,10 @@ function setEditing(on) {
   if (!photo) return;
   $("#edit-title").value = photo.title;
   $("#edit-caption").value = photo.caption;
-  $("#edit-year").value = photo.year;
-  $("#edit-place").value = photo.place;
-  $("#edit-album").value = photo.album;
+  $("#edit-date").value = photo.taken_date || "";
+  $("#edit-year").value = photo.year || "";
+  $("#edit-place").value = photo.place || "";
+  $("#edit-album").value = photo.album || "Foto Keluarga";
   $("#edit-title").focus();
 }
 
@@ -366,17 +380,20 @@ function closeModal() {
   $("#photo-modal").classList.remove("is-open");
 }
 
-function saveEdits(event) {
+async function saveEdits(event) {
   event.preventDefault();
   const id = state.activeId;
   if (!id) return;
   const album = albumMeta($("#edit-album").value);
-  const year = Number($("#edit-year").value) || new Date().getFullYear();
+  const dateVal = $("#edit-date")?.value || null;
+  const yearVal = Number($("#edit-year")?.value) || (dateVal ? new Date(dateVal).getFullYear() : new Date().getFullYear());
   const patch = {
     title: $("#edit-title").value.trim() || "Kenangan Keluarga",
     caption: $("#edit-caption").value.trim() || "Kenangan tersimpan di lemari keluarga.",
     place: $("#edit-place").value.trim() || "Album Pribadi",
-    year,
+    year: yearVal,
+    taken_date: dateVal,
+    taken_date_label: dateVal || `Tahun ${yearVal}`,
     album: album.name,
     category: album.category,
     chip: album.chip,
@@ -385,7 +402,35 @@ function saveEdits(event) {
   const extra = state.extras.find((photo) => photo.id === id);
   if (extra) Object.assign(extra, patch);
   else state.edits[id] = { ...(state.edits[id] || {}), ...patch };
+
+  const serverPhoto = (state.serverPhotos || []).find((p) => p.id === id);
+  if (serverPhoto) Object.assign(serverPhoto, patch);
+
   persist();
+
+  // Kirim update ke server jika foto tersimpan di database cloud
+  if (id && !id.startsWith("baru-") && !id.includes("-19") && !id.includes("-20")) {
+    try {
+      await fetch(`/api/photos/${id}`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          "x-family-pin": getAdminPin(),
+        },
+        body: JSON.stringify({
+          title: patch.title,
+          caption: patch.caption,
+          place: patch.place,
+          taken_year: patch.year,
+          taken_date: patch.taken_date,
+          album: patch.album,
+          category: patch.category,
+          chip: patch.chip,
+        }),
+      });
+    } catch {}
+  }
+
   const photo = allPhotos().find((p) => p.id === id);
   fillModal(photo);
   setEditing(false);
@@ -427,36 +472,324 @@ function toggleLike(id) {
   renderGallery();
 }
 
-function addLocalPhoto(file) {
-  if (!file.type.startsWith("image/")) {
-    toast("Pilih berkas foto JPG atau PNG ya.");
+let pendingUploadFile = null;
+
+function populateUploadAlbums() {
+  const select = $("#upload-target-album");
+  if (!select) return;
+  const albumNames = new Set(["Foto Keluarga", "Hari Raya", "Cucu & Liburan", "Masa Muda & Pernikahan"]);
+  allPhotos().forEach((p) => {
+    if (p.album) albumNames.add(p.album);
+  });
+  if (state.serverAlbums && Array.isArray(state.serverAlbums)) {
+    state.serverAlbums.forEach((a) => {
+      if (a.nama) albumNames.add(a.nama);
+      if (a.name) albumNames.add(a.name);
+    });
+  }
+
+  const currentVal = select.value || "Foto Keluarga";
+  select.innerHTML = Array.from(albumNames)
+    .map((name) => `<option value="${escapeHtml(name)}">${escapeHtml(name)}</option>`)
+    .join("");
+
+  if (albumNames.has(currentVal)) {
+    select.value = currentVal;
+  }
+}
+
+function openUploadModal(file) {
+  if (!file || !file.type.startsWith("image/")) {
+    toast("Pilih berkas foto JPG, PNG, atau WEBP ya.");
     return;
   }
-  const reader = new FileReader();
-  reader.onload = () => {
-    const year = new Date().getFullYear();
-    const id = `baru-${Date.now()}`;
-    state.extras.unshift({
-      id,
-      title: file.name.replace(/\.[^.]+$/, "") || "Kenangan Baru",
-      caption: "Baru saja disimpan ke lemari kenangan keluarga.",
-      place: "Album Pribadi",
-      year,
-      category: "keluarga",
-      chip: "Baru",
-      warm: true,
-      liked: false,
-      album: "Foto Keluarga",
-      src: reader.result,
+
+  pendingUploadFile = file;
+  const modal = $("#upload-modal");
+  if (!modal) return;
+
+  const previewImg = $("#upload-preview-img");
+  if (previewImg) previewImg.src = URL.createObjectURL(file);
+
+  const nameEl = $("#upload-preview-filename");
+  if (nameEl) nameEl.textContent = file.name;
+
+  const sizeEl = $("#upload-preview-filesize");
+  if (sizeEl) sizeEl.textContent = `${(file.size / (1024 * 1024)).toFixed(2)} MB • Berkas Gambar`;
+
+  // Bersihkan nama file jadi judul yang rapi
+  const cleanTitle = file.name.replace(/\.[^.]+$/, "").replace(/[-_]/g, " ");
+  const titleInput = $("#upload-title-input");
+  if (titleInput) titleInput.value = cleanTitle;
+
+  const placeInput = $("#upload-place-input");
+  if (placeInput) placeInput.value = "";
+
+  const captionInput = $("#upload-caption-input");
+  if (captionInput) captionInput.value = "";
+
+  // Set default Waktu: Hari Ini
+  const todayRadio = $("#upload-time-today");
+  if (todayRadio) todayRadio.checked = true;
+
+  const todayStr = new Date().toISOString().split("T")[0];
+  const dateInput = $("#upload-date-input");
+  if (dateInput) dateInput.value = todayStr;
+
+  const yearInput = $("#upload-year-input");
+  if (yearInput) yearInput.value = new Date().getFullYear();
+
+  const hintEl = $("#upload-date-hint");
+  if (hintEl) hintEl.textContent = "Foto dicatat diambil hari ini.";
+
+  populateUploadAlbums();
+
+  modal.classList.add("is-open");
+}
+
+function closeUploadModal() {
+  const modal = $("#upload-modal");
+  if (modal) modal.classList.remove("is-open");
+  pendingUploadFile = null;
+  const submitBtn = $("#submit-upload-btn");
+  if (submitBtn) {
+    submitBtn.disabled = false;
+    submitBtn.innerHTML = `<span class="material-symbols-outlined">save</span> Simpan ke Lemari Kenangan`;
+  }
+}
+
+async function loadServerPhotos() {
+  try {
+    const res = await fetch("/api/photos", {
+      headers: { "x-family-pin": getAdminPin() },
     });
-    persist();
-    setView("semua");
-    renderGallery();
-    toast("Foto berhasil disimpan. Silakan tulis keterangannya.");
-    openModal(id, true);
-  };
-  reader.onerror = () => toast("Foto belum bisa dibaca. Coba pilih ulang.");
-  reader.readAsDataURL(file);
+    if (res.ok) {
+      const data = await res.json();
+      const items = data.items || data.photos || [];
+      if (Array.isArray(items) && items.length > 0) {
+        state.serverPhotos = items.map((p) => ({
+          id: p.id,
+          title: p.title,
+          caption: p.caption,
+          place: p.place,
+          year: p.year || (p.taken_date ? new Date(p.taken_date).getFullYear() : new Date().getFullYear()),
+          taken_date: p.taken_date,
+          taken_date_label: p.taken_date_label,
+          category: p.category,
+          chip: p.chip,
+          warm: p.warm,
+          liked: p.liked || p.is_favorite,
+          album: p.album || "Foto Keluarga",
+          src: p.display_url || p.thumbnail_url || p.original_url || p.src,
+        }));
+        renderGallery();
+        if (state.view === "album") renderAlbums();
+      }
+    }
+  } catch (err) {
+    console.warn("Sinkronisasi foto server:", err);
+  }
+}
+
+async function loadServerAlbums() {
+  try {
+    const res = await fetch("/api/albums", {
+      headers: { "x-family-pin": getAdminPin() },
+    });
+    if (res.ok) {
+      const data = await res.json();
+      if (data.items && Array.isArray(data.items)) {
+        state.serverAlbums = data.items;
+        populateUploadAlbums();
+      }
+    }
+  } catch {}
+}
+
+function initUploadHandlers() {
+  // Pilihan radio Hari Ini vs Foto Lama
+  $("#upload-time-today")?.addEventListener("change", (e) => {
+    if (e.target.checked) {
+      const todayStr = new Date().toISOString().split("T")[0];
+      const dateInput = $("#upload-date-input");
+      if (dateInput) dateInput.value = todayStr;
+      const yearInput = $("#upload-year-input");
+      if (yearInput) yearInput.value = new Date().getFullYear();
+      const hint = $("#upload-date-hint");
+      if (hint) hint.textContent = "Foto dicatat diambil hari ini.";
+    }
+  });
+
+  $("#upload-time-past")?.addEventListener("change", (e) => {
+    if (e.target.checked) {
+      const hint = $("#upload-date-hint");
+      if (hint) hint.textContent = "💡 Untuk foto lama, silakan pilih tanggal di kalender atau cukup isi tahunnya.";
+      $("#upload-date-input")?.focus();
+    }
+  });
+
+  $("#upload-date-input")?.addEventListener("input", (e) => {
+    const val = e.target.value;
+    if (val) {
+      const y = new Date(val).getFullYear();
+      if (y && !isNaN(y)) {
+        const yearInput = $("#upload-year-input");
+        if (yearInput) yearInput.value = y;
+      }
+      const pastRadio = $("#upload-time-past");
+      if (pastRadio) pastRadio.checked = true;
+      const hint = $("#upload-date-hint");
+      if (hint) hint.textContent = `Foto dicatat diambil pada tanggal ${val}.`;
+    }
+  });
+
+  $("#upload-year-input")?.addEventListener("input", (e) => {
+    const pastRadio = $("#upload-time-past");
+    if (pastRadio) pastRadio.checked = true;
+    const y = e.target.value;
+    const hint = $("#upload-date-hint");
+    if (hint && y) hint.textContent = `Foto dicatat sebagai kenangan tahun ${y}.`;
+  });
+
+  $("#upload-change-file-btn")?.addEventListener("click", () => {
+    $("#foto-input")?.click();
+  });
+
+  $("#cancel-upload-btn")?.addEventListener("click", closeUploadModal);
+  $("#close-upload-modal")?.addEventListener("click", closeUploadModal);
+  $("#upload-modal")?.addEventListener("click", (e) => {
+    if (e.target.id === "upload-modal") closeUploadModal();
+  });
+
+  // Submit form simpan foto
+  $("#upload-form")?.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    if (!pendingUploadFile) {
+      toast("Pilih berkas foto terlebih dahulu.");
+      return;
+    }
+
+    const submitBtn = $("#submit-upload-btn");
+    if (submitBtn) {
+      submitBtn.disabled = true;
+      submitBtn.innerHTML = `⏳ Sedang menyimpan foto ke lemari...`;
+    }
+
+    const title = $("#upload-title-input")?.value.trim() || pendingUploadFile.name.replace(/\.[^.]+$/, "") || "Kenangan Baru";
+    const caption = $("#upload-caption-input")?.value.trim() || "Kenangan tersimpan di lemari keluarga.";
+    const place = $("#upload-place-input")?.value.trim() || "Album Pribadi";
+    const album = $("#upload-target-album")?.value || "Foto Keluarga";
+    const timeType = $('input[name="upload_time_type"]:checked')?.value || "today";
+
+    let takenDate = null;
+    let takenYear = null;
+
+    if (timeType === "today") {
+      takenDate = new Date().toISOString().split("T")[0];
+      takenYear = new Date().getFullYear();
+    } else {
+      takenDate = $("#upload-date-input")?.value || null;
+      takenYear = Number($("#upload-year-input")?.value) || (takenDate ? new Date(takenDate).getFullYear() : new Date().getFullYear());
+    }
+
+    let category = "keluarga";
+    let chip = "Keluarga";
+    let warm = false;
+
+    if (album.includes("Hari Raya")) {
+      category = "hari-raya";
+      chip = "Hari Raya";
+      warm = true;
+    } else if (album.includes("Liburan") || album.includes("Cucu")) {
+      category = "liburan";
+      chip = "Liburan";
+      warm = true;
+    } else if (album.includes("Pernikahan") || album.includes("Masa Muda")) {
+      category = "pernikahan";
+      chip = "Pernikahan";
+      warm = false;
+    }
+
+    toast("⏳ Sedang menyimpan foto ke lemari kenangan...");
+
+    try {
+      const fd = new FormData();
+      fd.append("photo", pendingUploadFile);
+      fd.append("title", title);
+      fd.append("caption", caption);
+      fd.append("place", place);
+      fd.append("album", album);
+      fd.append("category", category);
+      fd.append("chip", chip);
+      if (takenDate) fd.append("taken_date", takenDate);
+      if (takenYear) fd.append("taken_year", takenYear);
+      fd.append("pin", getAdminPin());
+
+      const res = await fetch("/api/photos/upload", {
+        method: "POST",
+        headers: { "x-family-pin": getAdminPin() },
+        body: fd,
+      });
+
+      const data = await res.json();
+      if (res.ok && data.photo) {
+        const p = data.photo;
+        const newPhotoItem = {
+          id: p.id,
+          title: p.title || title,
+          caption: p.caption || caption,
+          place: p.place || place,
+          year: p.year || takenYear,
+          taken_date: p.taken_date || takenDate,
+          taken_date_label: p.taken_date_label || (takenDate || `Tahun ${takenYear}`),
+          category: p.category || category,
+          chip: p.chip || chip,
+          warm: p.warm !== undefined ? p.warm : warm,
+          liked: false,
+          album: p.album || album,
+          src: p.display_url || p.thumbnail_url || p.original_url || URL.createObjectURL(pendingUploadFile),
+        };
+
+        state.serverPhotos = [newPhotoItem, ...(state.serverPhotos || [])];
+        closeUploadModal();
+        setView("semua");
+        renderGallery();
+        if (state.view === "album") renderAlbums();
+        toast(`✅ Foto "${title}" berhasil disimpan di album "${album}"!`);
+        return;
+      }
+    } catch (err) {
+      console.warn("Upload server foto beralih ke simpan lokal:", err);
+    }
+
+    // Fallback simpan lokal
+    const reader = new FileReader();
+    reader.onload = () => {
+      const localId = `baru-${Date.now()}`;
+      state.extras.unshift({
+        id: localId,
+        title,
+        caption,
+        place,
+        year: takenYear,
+        taken_date: takenDate,
+        taken_date_label: takenDate || `Tahun ${takenYear}`,
+        category,
+        chip,
+        warm,
+        liked: false,
+        album,
+        src: reader.result,
+      });
+      persist();
+      closeUploadModal();
+      setView("semua");
+      renderGallery();
+      if (state.view === "album") renderAlbums();
+      toast(`✅ Foto "${title}" berhasil disimpan di album "${album}"!`);
+    };
+    reader.readAsDataURL(pendingUploadFile);
+  });
 }
 
 function init() {
@@ -535,32 +868,34 @@ function init() {
   });
 
   ["add-photo", "pick-photo"].forEach((id) => {
-    $(`#${id}`).addEventListener("click", () => $("#foto-input").click());
+    $(`#${id}`)?.addEventListener("click", () => $("#foto-input")?.click());
   });
 
-  $("#foto-input").addEventListener("change", (e) => {
+  $("#foto-input")?.addEventListener("change", (e) => {
     const file = e.target.files?.[0];
-    if (file) addLocalPhoto(file);
+    if (file) openUploadModal(file);
     e.target.value = "";
   });
 
   const drop = $("#upload-inner");
-  ["dragenter", "dragover"].forEach((ev) => {
-    drop.addEventListener(ev, (e) => {
-      e.preventDefault();
-      drop.classList.add("is-drag");
+  if (drop) {
+    ["dragenter", "dragover"].forEach((ev) => {
+      drop.addEventListener(ev, (e) => {
+        e.preventDefault();
+        drop.classList.add("is-drag");
+      });
     });
-  });
-  ["dragleave", "drop"].forEach((ev) => {
-    drop.addEventListener(ev, (e) => {
-      e.preventDefault();
-      drop.classList.remove("is-drag");
+    ["dragleave", "drop"].forEach((ev) => {
+      drop.addEventListener(ev, (e) => {
+        e.preventDefault();
+        drop.classList.remove("is-drag");
+      });
     });
-  });
-  drop.addEventListener("drop", (e) => {
-    const file = e.dataTransfer.files?.[0];
-    if (file && file.type.startsWith("image/")) addLocalPhoto(file);
-  });
+    drop.addEventListener("drop", (e) => {
+      const file = e.dataTransfer?.files?.[0];
+      if (file && file.type.startsWith("image/")) openUploadModal(file);
+    });
+  }
 
   $("#close-modal").addEventListener("click", closeModal);
   $("#back-modal").addEventListener("click", closeModal);
@@ -642,7 +977,8 @@ function init() {
 
   document.addEventListener("keydown", (e) => {
     if (e.key !== "Escape") return;
-    if ($("#confirm-modal").classList.contains("is-open")) closeConfirm();
+    if ($("#confirm-modal")?.classList.contains("is-open")) closeConfirm();
+    else if ($("#upload-modal")?.classList.contains("is-open")) closeUploadModal();
     else if (state.editing) setEditing(false);
     else {
       closeModal();
@@ -659,8 +995,11 @@ function init() {
   if (VIEWS.includes(start)) setView(start);
   else renderGallery();
 
-  // Aktifkan Fitur Khusus Admin & Profil Lemari
+  // Aktifkan Fitur Khusus Admin, Unggah Kenangan, & Sinkronisasi Cloud
   initAdmin();
+  initUploadHandlers();
+  loadServerPhotos();
+  loadServerAlbums();
 }
 
 // --- ADMIN & PENGATURAN LEMARI KENANGAN ---
