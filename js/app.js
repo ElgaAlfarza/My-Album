@@ -658,6 +658,522 @@ function init() {
   const start = location.hash.replace("#", "");
   if (VIEWS.includes(start)) setView(start);
   else renderGallery();
+
+  // Aktifkan Fitur Khusus Admin & Profil Lemari
+  initAdmin();
+}
+
+// --- ADMIN & PENGATURAN LEMARI KENANGAN ---
+const SETTINGS_STORAGE_KEY = "album_kenangan_settings";
+
+function getAdminPin() {
+  return localStorage.getItem("family_admin_pin") || "1958";
+}
+
+function isAdminLoggedIn() {
+  return localStorage.getItem("family_admin_logged_in") === "true";
+}
+
+function setAdminLoggedIn(val) {
+  localStorage.setItem("family_admin_logged_in", val ? "true" : "false");
+  const badge = $("#admin-badge");
+  if (badge) badge.style.display = val ? "inline-block" : "none";
+}
+
+async function loadSettings() {
+  // 1. Muat pengaturan lokal terlebih dahulu agar secepat kilat
+  try {
+    const cached = JSON.parse(localStorage.getItem(SETTINGS_STORAGE_KEY) || "null");
+    if (cached) applySettings(cached);
+  } catch {}
+
+  // 2. Sinkronkan dengan server
+  try {
+    const res = await fetch("/api/settings", {
+      headers: { "x-family-pin": getAdminPin() },
+    });
+    if (res.ok) {
+      const data = await res.json();
+      if (data.settings) {
+        applySettings(data.settings);
+        localStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(data.settings));
+      }
+    }
+  } catch (err) {
+    console.warn("Sinkronisasi pengaturan server santai:", err);
+  }
+}
+
+function applySettings(settings) {
+  if (!settings) return;
+
+  if (settings.site_name) {
+    document.title = settings.site_name;
+    const brand = $("#brand-name");
+    if (brand) brand.textContent = settings.site_name;
+    const footerBrand = $("#footer-brand-name");
+    if (footerBrand) footerBrand.textContent = settings.site_name;
+    const setSiteInput = $("#set-site-name");
+    if (setSiteInput) setSiteInput.value = settings.site_name;
+  }
+
+  if (settings.kicker) {
+    const kickerEl = $("#hero-kicker-text");
+    if (kickerEl) kickerEl.textContent = settings.kicker;
+    const setKickerInput = $("#set-kicker");
+    if (setKickerInput) setKickerInput.value = settings.kicker;
+  }
+
+  if (settings.hero_title) {
+    const titleEl = $("#hero-title-text");
+    if (titleEl) titleEl.textContent = settings.hero_title;
+    const setTitleInput = $("#set-hero-title");
+    if (setTitleInput) setTitleInput.value = settings.hero_title;
+  }
+
+  if (settings.hero_lede) {
+    const ledeEl = $("#hero-lede-text");
+    if (ledeEl) ledeEl.textContent = settings.hero_lede;
+    const setLedeInput = $("#set-hero-lede");
+    if (setLedeInput) setLedeInput.value = settings.hero_lede;
+  }
+
+  if (settings.admin_name) {
+    const setAdminNameInput = $("#set-admin-name");
+    if (setAdminNameInput) setAdminNameInput.value = settings.admin_name;
+  }
+
+  if (settings.admin_avatar) {
+    const headerAvatar = $("#header-avatar");
+    if (headerAvatar) headerAvatar.src = settings.admin_avatar;
+    const previewAvatar = $("#admin-avatar-preview");
+    if (previewAvatar) previewAvatar.src = settings.admin_avatar;
+    const urlInput = $("#admin-avatar-url-input");
+    if (urlInput) urlInput.value = settings.admin_avatar;
+  }
+}
+
+async function loadAdminAlbums() {
+  const container = $("#admin-album-list");
+  if (!container) return;
+  container.innerHTML = `<div style="text-align:center;padding:1rem;color:var(--on-surface-muted)">Memuat daftar album...</div>`;
+
+  try {
+    const res = await fetch("/api/albums", {
+      headers: { "x-family-pin": getAdminPin() },
+    });
+    if (res.ok) {
+      const data = await res.json();
+      const items = data.items || [];
+      if (items.length === 0) {
+        container.innerHTML = `<p style="color:var(--on-surface-muted);padding:0.5rem">Belum ada album tersimpan.</p>`;
+        return;
+      }
+      container.innerHTML = items
+        .map(
+          (album) => `
+        <div class="admin-item">
+          <div class="admin-item-info">
+            <strong>📁 ${escapeHtml(album.nama)}</strong>
+            <span>${escapeHtml(album.deskripsi || "Tanpa deskripsi")} • ${escapeHtml(album.photo_count_label || "0 lembar foto")}</span>
+          </div>
+          <button type="button" class="btn btn-outline" onclick="deleteAlbumById('${album.id}')" style="min-height:36px;padding:0.35rem 0.75rem;font-size:13px;color:var(--secondary)">
+            <span class="material-symbols-outlined" style="font-size:16px">delete</span>
+            Hapus
+          </button>
+        </div>
+      `
+        )
+        .join("");
+    }
+  } catch (err) {
+    container.innerHTML = `<p style="color:var(--on-surface-muted)">Gagal memuat album.</p>`;
+  }
+}
+
+async function deleteAlbumById(albumId) {
+  if (!confirm("Bubarkan album ini? (Foto-foto di dalamnya tidak akan terhapus, hanya map yang dibubarkan)")) return;
+  try {
+    const res = await fetch(`/api/albums/${albumId}`, {
+      method: "DELETE",
+      headers: { "x-family-pin": getAdminPin() },
+    });
+    if (res.ok) {
+      toast("Album berhasil dihapus.");
+      loadAdminAlbums();
+    } else {
+      toast("Gagal menghapus album.");
+    }
+  } catch {
+    toast("Terjadi kesalahan.");
+  }
+}
+window.deleteAlbumById = deleteAlbumById;
+
+async function loadAdminMembers() {
+  const container = $("#admin-member-list");
+  if (!container) return;
+  container.innerHTML = `<div style="text-align:center;padding:1rem;color:var(--on-surface-muted)">Memuat daftar anggota...</div>`;
+
+  try {
+    const res = await fetch("/api/members", {
+      headers: { "x-family-pin": getAdminPin() },
+    });
+    if (res.ok) {
+      const data = await res.json();
+      const members = data.members || [];
+      if (members.length === 0) {
+        container.innerHTML = `<p style="color:var(--on-surface-muted)">Belum ada anggota terdaftar.</p>`;
+        return;
+      }
+      container.innerHTML = members
+        .map(
+          (m) => `
+        <div class="admin-item">
+          <div class="admin-item-info">
+            <strong>${m.role === "admin" ? "👑" : "👤"} ${escapeHtml(m.nama)} ${m.role === "admin" ? "(Pengelola)" : ""}</strong>
+            <span>${m.no_hp ? "WA: " + escapeHtml(m.no_hp) : "Tanpa nomor kontak"}</span>
+          </div>
+          ${
+            m.role !== "admin"
+              ? `<button type="button" class="btn btn-outline" onclick="deleteMemberById('${m.id}')" style="min-height:36px;padding:0.35rem 0.75rem;font-size:13px">Nonaktifkan</button>`
+              : `<span class="badge" style="background:var(--primary-tint);color:var(--primary);font-size:12px;padding:4px 8px;border-radius:999px">Admin Utama</span>`
+          }
+        </div>
+      `
+        )
+        .join("");
+    }
+  } catch (err) {
+    container.innerHTML = `<p style="color:var(--on-surface-muted)">Gagal memuat anggota keluarga.</p>`;
+  }
+}
+
+async function deleteMemberById(memberId) {
+  if (!confirm("Nonaktifkan anggota keluarga ini?")) return;
+  try {
+    const res = await fetch(`/api/members/${memberId}`, {
+      method: "DELETE",
+      headers: { "x-family-pin": getAdminPin() },
+    });
+    if (res.ok) {
+      toast("Anggota berhasil dinonaktifkan.");
+      loadAdminMembers();
+    } else {
+      toast("Gagal memproses anggota.");
+    }
+  } catch {
+    toast("Terjadi kesalahan.");
+  }
+}
+window.deleteMemberById = deleteMemberById;
+
+async function loadAdminTrash() {
+  const container = $("#admin-trash-list");
+  if (!container) return;
+  container.innerHTML = `<div style="text-align:center;padding:1rem;color:var(--on-surface-muted)">Memeriksa tong sampah...</div>`;
+
+  try {
+    const res = await fetch("/api/photos?trash=true", {
+      headers: { "x-family-pin": getAdminPin() },
+    });
+    if (res.ok) {
+      const data = await res.json();
+      const photos = data.photos || [];
+      if (photos.length === 0) {
+        container.innerHTML = `<div style="text-align:center;padding:2rem;color:var(--on-surface-muted)">
+          <span class="material-symbols-outlined" style="font-size:48px;display:block;margin-bottom:0.5rem">inventory_2</span>
+          Tong sampah bersih. Semua foto keluarga aman di lemari.
+        </div>`;
+        return;
+      }
+      container.innerHTML = photos
+        .map(
+          (p) => `
+        <div class="admin-item" style="gap:1rem">
+          <img src="${p.thumbnail_url || p.display_url || p.src}" style="width:50px;height:50px;border-radius:6px;object-fit:cover" alt="">
+          <div class="admin-item-info" style="flex:1">
+            <strong>${escapeHtml(p.title || "Kenangan")}</strong>
+            <span>${escapeHtml(p.place || "Tempat tidak dicatat")} • Dikeluarkan pada ${new Date(p.deleted_at).toLocaleDateString("id-ID")}</span>
+          </div>
+          <button type="button" class="btn btn-outline" onclick="restorePhotoById('${p.id}')" style="min-height:36px;padding:0.35rem 0.75rem;font-size:13px;color:var(--primary)">
+            <span class="material-symbols-outlined" style="font-size:16px">restore</span>
+            Pulihkan
+          </button>
+        </div>
+      `
+        )
+        .join("");
+    }
+  } catch (err) {
+    container.innerHTML = `<p style="color:var(--on-surface-muted)">Gagal memuat tong sampah.</p>`;
+  }
+}
+
+async function restorePhotoById(photoId) {
+  try {
+    const res = await fetch(`/api/photos/${photoId}/restore`, {
+      method: "POST",
+      headers: { "x-family-pin": getAdminPin() },
+    });
+    if (res.ok) {
+      toast("✅ Foto berhasil dipulihkan ke lemari kenangan!");
+      loadAdminTrash();
+      renderGallery();
+    } else {
+      toast("Gagal memulihkan foto.");
+    }
+  } catch {
+    toast("Terjadi kesalahan koneksi.");
+  }
+}
+window.restorePhotoById = restorePhotoById;
+
+function initAdmin() {
+  setAdminLoggedIn(isAdminLoggedIn());
+  loadSettings();
+
+  const openPinModal = () => {
+    const pinInput = $("#pin-input");
+    if (pinInput) pinInput.value = "";
+    $("#pin-modal")?.classList.add("is-open");
+    setTimeout(() => pinInput?.focus(), 150);
+  };
+
+  const closePinModal = () => {
+    $("#pin-modal")?.classList.remove("is-open");
+  };
+
+  const openAdminModal = () => {
+    $("#admin-modal")?.classList.add("is-open");
+    loadSettings();
+  };
+
+  const closeAdminModal = () => {
+    $("#admin-modal")?.classList.remove("is-open");
+  };
+
+  function handleOpenAdmin() {
+    if (isAdminLoggedIn()) {
+      openAdminModal();
+    } else {
+      openPinModal();
+    }
+  }
+
+  $("#open-admin-btn")?.addEventListener("click", handleOpenAdmin);
+  $("#nav-admin-btn")?.addEventListener("click", handleOpenAdmin);
+  $("#mobile-admin-btn")?.addEventListener("click", handleOpenAdmin);
+
+  $("#close-pin-modal")?.addEventListener("click", closePinModal);
+  $("#pin-cancel-btn")?.addEventListener("click", closePinModal);
+  $("#pin-modal")?.addEventListener("click", (e) => {
+    if (e.target.id === "pin-modal") closePinModal();
+  });
+
+  $("#pin-form")?.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const pin = $("#pin-input")?.value.trim();
+    if (!pin) return;
+
+    try {
+      const res = await fetch("/api/auth/pin", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ pin }),
+      });
+      const data = await res.json();
+      if (res.ok && data.ok) {
+        localStorage.setItem("family_admin_pin", pin);
+        setAdminLoggedIn(true);
+        closePinModal();
+        openAdminModal();
+        toast("👑 Selamat datang kembali di Panel Admin Lemari!");
+      } else {
+        toast(data.message || "PIN keluarga tidak sesuai. Silakan coba lagi.");
+      }
+    } catch {
+      if (pin === "1958") {
+        localStorage.setItem("family_admin_pin", pin);
+        setAdminLoggedIn(true);
+        closePinModal();
+        openAdminModal();
+        toast("👑 Masuk Mode Admin.");
+      } else {
+        toast("PIN tidak sesuai.");
+      }
+    }
+  });
+
+  $("#close-admin-modal")?.addEventListener("click", closeAdminModal);
+  $("#admin-modal")?.addEventListener("click", (e) => {
+    if (e.target.id === "admin-modal") closeAdminModal();
+  });
+
+  // Tab switcher
+  $$(".admin-tab-btn").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      $$(".admin-tab-btn").forEach((b) => b.classList.remove("is-active"));
+      $$(".admin-panel").forEach((p) => p.classList.remove("is-active"));
+      btn.classList.add("is-active");
+      const tabId = btn.dataset.tab;
+      const targetPanel = $(`#${tabId}`);
+      if (targetPanel) targetPanel.classList.add("is-active");
+
+      if (tabId === "tab-album") loadAdminAlbums();
+      if (tabId === "tab-keluarga") loadAdminMembers();
+      if (tabId === "tab-sampah") loadAdminTrash();
+    });
+  });
+
+  // Avatar pick & upload
+  $("#pick-avatar-btn")?.addEventListener("click", () => {
+    $("#admin-avatar-file-input")?.click();
+  });
+
+  $("#admin-avatar-file-input")?.addEventListener("change", async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const localUrl = URL.createObjectURL(file);
+    const prev = $("#admin-avatar-preview");
+    if (prev) prev.src = localUrl;
+
+    toast("Mengunggah foto profil...");
+    try {
+      const fd = new FormData();
+      fd.append("avatar", file);
+      const res = await fetch("/api/members/avatar", {
+        method: "POST",
+        headers: { "x-family-pin": getAdminPin() },
+        body: fd,
+      });
+      const data = await res.json();
+      if (res.ok && data.avatar_url) {
+        if (prev) prev.src = data.avatar_url;
+        const hAvatar = $("#header-avatar");
+        if (hAvatar) hAvatar.src = data.avatar_url;
+        const urlInput = $("#admin-avatar-url-input");
+        if (urlInput) urlInput.value = data.avatar_url;
+        toast("✅ Foto profil berhasil diganti dan disimpan!");
+      } else {
+        const hAvatar = $("#header-avatar");
+        if (hAvatar) hAvatar.src = localUrl;
+        toast("Foto profil diterapkan.");
+      }
+    } catch {
+      const hAvatar = $("#header-avatar");
+      if (hAvatar) hAvatar.src = localUrl;
+      toast("Foto profil diterapkan di perangkat ini.");
+    }
+  });
+
+  $("#admin-avatar-url-input")?.addEventListener("input", (e) => {
+    const val = e.target.value.trim();
+    if (val) {
+      const prev = $("#admin-avatar-preview");
+      if (prev) prev.src = val;
+    }
+  });
+
+  // Simpan pengaturan tampilan
+  $("#admin-settings-form")?.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const payload = {
+      site_name: $("#set-site-name")?.value.trim() || "Album Kenangan Saya",
+      kicker: $("#set-kicker")?.value.trim() || "Ruang Kenangan Pribadi",
+      hero_title: $("#set-hero-title")?.value.trim() || "Selamat Datang di Lemari Kenangan",
+      hero_lede: $("#set-hero-lede")?.value.trim() || "",
+      admin_name: $("#set-admin-name")?.value.trim() || "Ayah (Admin)",
+      admin_avatar: $("#admin-avatar-url-input")?.value.trim() || $("#admin-avatar-preview")?.src || "",
+    };
+
+    applySettings(payload);
+    localStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(payload));
+
+    try {
+      const res = await fetch("/api/settings", {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          "x-family-pin": getAdminPin(),
+        },
+        body: JSON.stringify(payload),
+      });
+      const data = await res.json();
+      toast(data.message || "✅ Pengaturan lemari berhasil disimpan!");
+    } catch {
+      toast("✅ Pengaturan disimpan di perangkat ini.");
+    }
+  });
+
+  // Tambah album
+  $("#create-album-form")?.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const nama = $("#new-album-name")?.value.trim();
+    const deskripsi = $("#new-album-desc")?.value.trim();
+    if (!nama) return;
+
+    try {
+      const res = await fetch("/api/albums", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-family-pin": getAdminPin(),
+        },
+        body: JSON.stringify({ nama, deskripsi }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        toast(`✅ Album "${nama}" berhasil dibuat!`);
+        $("#new-album-name").value = "";
+        $("#new-album-desc").value = "";
+        loadAdminAlbums();
+      } else {
+        toast(data.message || "Gagal membuat album.");
+      }
+    } catch {
+      toast("Gagal membuat album.");
+    }
+  });
+
+  // Tambah anggota
+  $("#add-member-form")?.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const nama = $("#new-member-name")?.value.trim();
+    const role = $("#new-member-role")?.value;
+    const no_hp = $("#new-member-phone")?.value.trim();
+    if (!nama) return;
+
+    try {
+      const res = await fetch("/api/members", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-family-pin": getAdminPin(),
+        },
+        body: JSON.stringify({ nama, role, no_hp }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        toast(`✅ Anggota keluarga "${nama}" berhasil ditambahkan!`);
+        $("#new-member-name").value = "";
+        $("#new-member-phone").value = "";
+        loadAdminMembers();
+      } else {
+        toast(data.message || "Gagal menambah anggota.");
+      }
+    } catch {
+      toast("Gagal menambah anggota.");
+    }
+  });
+
+  // Logout
+  $("#admin-logout-btn")?.addEventListener("click", () => {
+    setAdminLoggedIn(false);
+    closeAdminModal();
+    toast("Anda telah keluar dari Mode Admin.");
+  });
 }
 
 document.addEventListener("DOMContentLoaded", init);

@@ -16,7 +16,7 @@
     <div class="header-inner">
       <a class="brand" href="./" data-nav="semua">
         <img src="assets/logo.svg" alt="">
-        <span>Album Kenangan Saya</span>
+        <span id="brand-name">Album Kenangan Saya</span>
       </a>
       <label class="search desktop-search">
         <span class="icon material-symbols-outlined">search</span>
@@ -26,13 +26,17 @@
         <a href="#semua" data-nav="semua" class="is-active">Semua Foto</a>
         <a href="#album" data-nav="album">Album Saya</a>
         <a href="#favorit" data-nav="favorit">Favorit</a>
+        <button type="button" class="btn btn-outline nav-admin-btn" id="nav-admin-btn" style="min-height:36px;padding:0.35rem 0.75rem;font-size:13px;border-radius:999px">👑 Admin</button>
       </nav>
       <div class="header-actions">
         <button class="btn btn-primary" id="add-photo" type="button">
           <span class="material-symbols-outlined">add_photo_alternate</span>
           <span class="btn-label">+ Tambah Foto</span>
         </button>
-        <img class="avatar" src="https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=120&q=80" alt="Profil keluarga">
+        <button class="avatar-btn" id="open-admin-btn" type="button" aria-label="Buka Pengaturan Admin" title="Pengaturan Admin & Profil Lemari">
+          <img class="avatar" id="header-avatar" src="https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=120&q=80" alt="Profil keluarga">
+          <span class="admin-badge" id="admin-badge" style="display:none">Admin</span>
+        </button>
         <button class="menu-toggle" id="menu-toggle" type="button" aria-label="Buka menu">
           <span class="material-symbols-outlined">menu</span>
         </button>
@@ -42,6 +46,7 @@
       <a href="#semua" data-nav="semua" class="btn btn-primary">Semua Foto</a>
       <a href="#album" data-nav="album" class="btn btn-outline">Album Saya</a>
       <a href="#favorit" data-nav="favorit" class="btn btn-outline">Favorit</a>
+      <button type="button" class="btn btn-outline nav-admin-btn" id="mobile-admin-btn">👑 Panel Admin</button>
     </nav>
     <div class="mobile-search-bar">
       <label class="search">
@@ -59,10 +64,10 @@
         <div>
           <span class="kicker">
             <span class="material-symbols-outlined">photo_album</span>
-            Ruang Kenangan Pribadi
+            <span id="hero-kicker-text">Ruang Kenangan Pribadi</span>
           </span>
-          <h1>Selamat Datang di Lemari Kenangan</h1>
-          <p class="lede">Tempat aman untuk menyimpan, merapikan, dan membuka kembali foto-foto berharga Anda bersama keluarga tercinta dengan tenang dan mudah.</p>
+          <h1 id="hero-title-text">Selamat Datang di Lemari Kenangan</h1>
+          <p class="lede" id="hero-lede-text">Tempat aman untuk menyimpan, merapikan, dan membuka kembali foto-foto berharga Anda bersama keluarga tercinta dengan tenang dan mudah.</p>
         </div>
         <div class="stat-card">
           <div class="icon-wrap">
@@ -275,7 +280,230 @@
     </div>
   </div>
 
-  <div class="toast" id="toast" role="status"></div>
+  <!-- Modal Masuk PIN Admin -->
+  <div class="modal" id="pin-modal" role="dialog" aria-modal="true" aria-labelledby="pin-title">
+    <div class="modal-card pin-card">
+      <div class="modal-head" style="justify-content:center;position:relative">
+        <h2 id="pin-title">👑 Masuk Mode Admin</h2>
+        <button class="icon-btn" id="close-pin-modal" type="button" aria-label="Tutup" style="position:absolute;right:0;top:0">
+          <span class="material-symbols-outlined">close</span>
+        </button>
+      </div>
+      <p style="color:var(--on-surface-muted);margin-top:0.5rem">Masukkan 4 angka PIN keluarga untuk membuka panel pengaturan lemari kenangan.</p>
+      <form id="pin-form">
+        <input type="password" maxlength="4" pattern="[0-9]*" inputmode="numeric" id="pin-input" class="pin-input" placeholder="••••" autocomplete="off" autofocus>
+        <p class="hint" style="font-size:13px;color:var(--on-surface-muted);margin-bottom:1rem">PIN bawaan keluarga: <strong style="color:var(--primary)">1958</strong></p>
+        <div class="modal-actions">
+          <button class="btn btn-outline" id="pin-cancel-btn" type="button">Batal</button>
+          <button class="btn btn-primary" id="pin-submit-btn" type="submit">Buka Lemari Admin</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal Panel Admin Utama -->
+  <div class="modal" id="admin-modal" role="dialog" aria-modal="true" aria-labelledby="admin-panel-title">
+    <div class="modal-card admin-modal-card">
+      <div class="modal-head">
+        <div>
+          <div class="place" style="display:flex;align-items:center;gap:6px">
+            <span class="material-symbols-outlined" style="font-size:18px">shield_person</span>
+            Mode Pengelola Aktif
+          </div>
+          <h2 id="admin-panel-title">Pengaturan Lemari & Profil</h2>
+        </div>
+        <button class="icon-btn" id="close-admin-modal" type="button" aria-label="Tutup panel admin">
+          <span class="material-symbols-outlined">close</span>
+        </button>
+      </div>
+
+      <!-- Tab Navigasi Admin -->
+      <div class="admin-tabs" role="tablist">
+        <button class="admin-tab-btn is-active" data-tab="tab-tampilan" type="button">
+          <span class="material-symbols-outlined">palette</span>
+          Tampilan & Profil
+        </button>
+        <button class="admin-tab-btn" data-tab="tab-album" type="button">
+          <span class="material-symbols-outlined">photo_library</span>
+          Kelola Album
+        </button>
+        <button class="admin-tab-btn" data-tab="tab-keluarga" type="button">
+          <span class="material-symbols-outlined">group</span>
+          Anggota Keluarga
+        </button>
+        <button class="admin-tab-btn" data-tab="tab-sampah" type="button">
+          <span class="material-symbols-outlined">delete_sweep</span>
+          Tong Sampah
+        </button>
+        <button class="admin-tab-btn" data-tab="tab-keamanan" type="button">
+          <span class="material-symbols-outlined">security</span>
+          Keamanan & Cadangan
+        </button>
+      </div>
+
+      <!-- Panel 1: Tampilan & Profil -->
+      <div class="admin-panel is-active" id="tab-tampilan">
+        <form id="admin-settings-form">
+          <div class="admin-avatar-box">
+            <img class="admin-avatar-preview" id="admin-avatar-preview" src="https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=120&q=80" alt="Preview Foto Profil">
+            <div class="admin-avatar-actions">
+              <strong>Foto Profil / Avatar Admin</strong>
+              <span style="font-size:13px;color:var(--on-surface-muted)">Foto ini akan muncul di pojok kanan atas lemari kenangan.</span>
+              <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:4px">
+                <input type="file" id="admin-avatar-file-input" accept="image/*" class="visually-hidden" hidden>
+                <button type="button" class="btn btn-outline" id="pick-avatar-btn" style="min-height:38px;padding:0.4rem 1rem;font-size:13px">
+                  <span class="material-symbols-outlined" style="font-size:18px">upload</span>
+                  + Unggah Foto dari HP / Komputer
+                </button>
+              </div>
+              <input type="url" id="admin-avatar-url-input" placeholder="Atau tempel tautan URL foto di sini..." style="margin-top:6px;padding:0.4rem 0.75rem;font-size:13px;border:1px solid var(--surface-input);border-radius:var(--radius-xs);width:100%">
+            </div>
+          </div>
+
+          <div class="admin-input-group">
+            <label for="set-admin-name">Nama Anda (Pengelola / Admin)</label>
+            <input type="text" id="set-admin-name" placeholder="Contoh: Ayah, Ibu, atau Elga Alfarza" value="Ayah (Admin)" required>
+          </div>
+
+          <div class="admin-input-group">
+            <label for="set-site-name">Nama Lemari / Website</label>
+            <input type="text" id="set-site-name" placeholder="Contoh: Album Kenangan Keluarga Sudirman" value="Album Kenangan Saya" required>
+            <span class="hint" style="font-size:12px;color:var(--on-surface-muted)">Nama ini tampil pada pojok kiri atas dan judul tab peramban.</span>
+          </div>
+
+          <div class="admin-input-group">
+            <label for="set-kicker">Teks Kicker / Subjudul Kecil</label>
+            <input type="text" id="set-kicker" placeholder="Contoh: Ruang Kenangan Pribadi" value="Ruang Kenangan Pribadi">
+          </div>
+
+          <div class="admin-input-group">
+            <label for="set-hero-title">Judul Sambutan Utama</label>
+            <input type="text" id="set-hero-title" placeholder="Contoh: Selamat Datang di Lemari Kenangan" value="Selamat Datang di Lemari Kenangan" required>
+          </div>
+
+          <div class="admin-input-group">
+            <label for="set-hero-lede">Keterangan Sambutan Hangat</label>
+            <textarea id="set-hero-lede" rows="3" placeholder="Tulis kalimat sambutan untuk keluarga..."></textarea>
+          </div>
+
+          <div class="modal-actions" style="justify-content:flex-end;margin-top:1.5rem">
+            <button class="btn btn-primary" type="submit" id="save-settings-btn" style="min-height:48px;padding:0.75rem 2rem">
+              <span class="material-symbols-outlined">save</span>
+              Simpan Perubahan Tampilan
+            </button>
+          </div>
+        </form>
+      </div>
+
+      <!-- Panel 2: Kelola Album -->
+      <div class="admin-panel" id="tab-album">
+        <p style="color:var(--on-surface-soft)">Di sini Anda bisa membuat album baru atau mengelola album map kenangan keluarga.</p>
+        
+        <div class="admin-form-box">
+          <h3>+ Buat Album Kenangan Baru</h3>
+          <form id="create-album-form" style="display:flex;flex-direction:column;gap:0.75rem">
+            <div class="admin-input-group">
+              <label for="new-album-name">Nama Album</label>
+              <input type="text" id="new-album-name" placeholder="Contoh: Haji 2010, Rumah Masa Kecil, Sepeda Kakek" required>
+            </div>
+            <div class="admin-input-group">
+              <label for="new-album-desc">Deskripsi Singkat</label>
+              <input type="text" id="new-album-desc" placeholder="Contoh: Kumpulan foto kenangan perjalanan ibadah ke tanah suci.">
+            </div>
+            <button type="submit" class="btn btn-primary" style="align-self:flex-start">
+              <span class="material-symbols-outlined">create_new_folder</span>
+              Buat Album Sekarang
+            </button>
+          </form>
+        </div>
+
+        <div style="margin-top:1.5rem">
+          <h3 style="font-size:18px;margin-bottom:0.75rem">Daftar Album Saat Ini</h3>
+          <div class="admin-list" id="admin-album-list">
+            <!-- Diisi secara dinamis oleh JavaScript -->
+          </div>
+        </div>
+      </div>
+
+      <!-- Panel 3: Anggota Keluarga -->
+      <div class="admin-panel" id="tab-keluarga">
+        <p style="color:var(--on-surface-soft)">Kelola daftar anggota keluarga yang bisa ditandai pada foto kenangan.</p>
+
+        <div class="admin-form-box">
+          <h3>+ Tambah Anggota Keluarga Baru</h3>
+          <form id="add-member-form" style="display:flex;flex-direction:column;gap:0.75rem">
+            <div class="field-row" style="display:grid;grid-template-columns:1fr 1fr;gap:0.75rem">
+              <div class="admin-input-group">
+                <label for="new-member-name">Nama Lengkap / Panggilan</label>
+                <input type="text" id="new-member-name" placeholder="Contoh: Mas Budi, Siti, Cucu Alif" required>
+              </div>
+              <div class="admin-input-group">
+                <label for="new-member-role">Peran Keluarga</label>
+                <select id="new-member-role">
+                  <option value="anggota">Anggota Keluarga Biasa</option>
+                  <option value="admin">Pengelola (Admin)</option>
+                </select>
+              </div>
+            </div>
+            <div class="admin-input-group">
+              <label for="new-member-phone">Nomor WhatsApp (Opsional)</label>
+              <input type="tel" id="new-member-phone" placeholder="Contoh: 08123456789">
+            </div>
+            <button type="submit" class="btn btn-primary" style="align-self:flex-start">
+              <span class="material-symbols-outlined">person_add</span>
+              Tambah Anggota
+            </button>
+          </form>
+        </div>
+
+        <div style="margin-top:1.5rem">
+          <h3 style="font-size:18px;margin-bottom:0.75rem">Daftar Anggota Terdaftar</h3>
+          <div class="admin-list" id="admin-member-list">
+            <!-- Diisi secara dinamis oleh JavaScript -->
+          </div>
+        </div>
+      </div>
+
+      <!-- Panel 4: Tong Sampah Foto -->
+      <div class="admin-panel" id="tab-sampah">
+        <div style="background:var(--surface-alt);padding:1rem;border-radius:var(--radius-sm);margin-bottom:1rem;border:1px solid var(--surface-line)">
+          <strong>Prinsip "Foto Tidak Boleh Hilang":</strong>
+          <p style="margin:4px 0 0;font-size:13px;color:var(--on-surface-muted)">Foto yang dikeluarkan dari lemari tetap tersimpan aman di tong sampah selama 30 hari sebelum dibersihkan. Anda bisa memulihkannya kapan saja ke galeri utama.</p>
+        </div>
+        <div class="admin-list" id="admin-trash-list">
+          <!-- Diisi secara dinamis oleh JavaScript -->
+        </div>
+      </div>
+
+      <!-- Panel 5: Keamanan & Cadangan -->
+      <div class="admin-panel" id="tab-keamanan">
+        <div class="admin-form-box">
+          <h3>🛡️ Keamanan PIN Masuk</h3>
+          <p style="font-size:14px;color:var(--on-surface-muted);margin-bottom:1rem">PIN saat ini yang digunakan untuk masuk mode admin keluarga adalah: <strong style="font-size:18px;color:var(--primary);letter-spacing:2px">1958</strong></p>
+          <div style="background:var(--surface-white);padding:0.75rem 1rem;border-radius:var(--radius-xs);border:1px solid var(--surface-line);font-size:13px;color:var(--on-surface-muted)">
+            Untuk privasi keluarga, lemari foto ini tidak memerlukan akun rumit dengan email/kata sandi panjang. Siapapun anggota keluarga yang mengetahui 4 angka PIN ini dapat mengelola lemari foto.
+          </div>
+        </div>
+
+        <div class="admin-form-box" style="margin-top:1.5rem">
+          <h3>📦 Cadangan Penuh (ZIP Backup)</h3>
+          <p style="font-size:14px;color:var(--on-surface-muted);margin-bottom:1rem">Unduh seluruh arsip foto keluarga dalam resolusi aslinya ke dalam satu berkas ZIP untuk disimpan di flashdisk atau komputer rumah.</p>
+          <a class="btn btn-outline" href="/api/export" target="_blank" download style="text-decoration:none;display:inline-flex;align-items:center;gap:6px">
+            <span class="material-symbols-outlined">folder_zip</span>
+            Unduh Seluruh Foto Keluarga (ZIP)
+          </a>
+        </div>
+
+        <div style="margin-top:2rem;padding-top:1.5rem;border-top:1px solid var(--surface-line);display:flex;justify-content:flex-end">
+          <button type="button" class="btn btn-terracotta" id="admin-logout-btn">
+            <span class="material-symbols-outlined">logout</span>
+            Keluar dari Mode Admin
+          </button>
+        </div>
+      </div>
+
+    </div>
+  </div>
 
   <footer class="site-footer">
     <div class="wrap footer-inner">

@@ -1168,3 +1168,197 @@ h1 {
     grid-template-columns: 1fr;
   }
 }
+
+/* --- Mode Admin & Pengaturan Lemari --- */
+.avatar-btn {
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  position: relative;
+  border-radius: 999px;
+  transition: transform 0.15s ease;
+}
+.avatar-btn:hover {
+  transform: scale(1.05);
+}
+.avatar-btn:focus-visible {
+  outline: 3px solid var(--primary);
+  outline-offset: 2px;
+}
+.admin-badge {
+  position: absolute;
+  bottom: -4px;
+  right: -6px;
+  background: var(--primary);
+  color: var(--on-primary);
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  padding: 2px 6px;
+  border-radius: 999px;
+  border: 2px solid var(--surface-white);
+  box-shadow: var(--shadow-sm);
+  pointer-events: none;
+}
+.nav-admin-btn {
+  color: var(--primary) !important;
+  font-weight: 600 !important;
+  border: 1px dashed var(--primary-soft) !important;
+  background: var(--primary-tint) !important;
+}
+
+/* Admin Modal Card */
+.admin-modal-card {
+  width: min(58rem, 100%) !important;
+  max-height: 92vh !important;
+}
+.admin-tabs {
+  display: flex;
+  gap: 0.5rem;
+  overflow-x: auto;
+  padding-bottom: 0.5rem;
+  margin-top: 1rem;
+  margin-bottom: 1.5rem;
+  border-bottom: 1px solid var(--surface-line);
+}
+.admin-tab-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.6rem 1rem;
+  background: var(--surface-alt);
+  border: 1px solid var(--surface-line);
+  border-radius: 999px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--on-surface-soft);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.2s ease;
+}
+.admin-tab-btn:hover {
+  background: var(--surface-line);
+  color: var(--on-surface);
+}
+.admin-tab-btn.is-active {
+  background: var(--primary);
+  border-color: var(--primary);
+  color: var(--on-primary);
+  box-shadow: var(--shadow-sm);
+}
+.admin-panel {
+  display: none;
+}
+.admin-panel.is-active {
+  display: block;
+}
+
+/* Avatar Editor */
+.admin-avatar-box {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+  padding: 1.25rem;
+  background: var(--surface-alt);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--surface-line);
+  margin-bottom: 1.5rem;
+}
+.admin-avatar-preview {
+  width: 5rem;
+  height: 5rem;
+  border-radius: 999px;
+  object-fit: cover;
+  box-shadow: 0 0 0 4px var(--primary-tint);
+  border: 2px solid var(--surface-white);
+  flex-shrink: 0;
+}
+.admin-avatar-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+/* Admin Item List */
+.admin-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  margin-top: 1rem;
+}
+.admin-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.85rem 1rem;
+  background: var(--surface-alt);
+  border: 1px solid var(--surface-line);
+  border-radius: var(--radius-sm);
+}
+.admin-item-info strong {
+  display: block;
+  font-size: 16px;
+  color: var(--on-surface);
+}
+.admin-item-info span {
+  font-size: 13px;
+  color: var(--on-surface-muted);
+}
+.admin-form-box {
+  padding: 1.25rem;
+  background: var(--surface-alt);
+  border: 1px solid var(--surface-line);
+  border-radius: var(--radius-sm);
+  margin-top: 1.5rem;
+}
+.admin-form-box h3 {
+  margin: 0 0 0.75rem;
+  font-size: 18px;
+}
+.admin-input-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  margin-bottom: 1rem;
+}
+.admin-input-group label {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--on-surface-soft);
+}
+.admin-input-group input,
+.admin-input-group textarea,
+.admin-input-group select {
+  padding: 0.75rem 1rem;
+  border: 1px solid var(--surface-input);
+  border-radius: var(--radius-xs);
+  font-size: 15px;
+  font-family: inherit;
+  background: var(--surface-white);
+  color: var(--on-surface);
+}
+.admin-input-group textarea {
+  min-height: 80px;
+  resize: vertical;
+}
+
+/* PIN Modal */
+.pin-card {
+  width: min(28rem, 100%) !important;
+  text-align: center;
+}
+.pin-input {
+  font-size: 28px !important;
+  letter-spacing: 8px;
+  text-align: center;
+  max-width: 14rem;
+  margin: 1rem auto;
+  font-weight: 700;
+}
+

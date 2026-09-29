@@ -5,6 +5,7 @@ import { statsRouter } from "./stats.js";
 import { shareRouter } from "./share.js";
 import { exportRouter } from "./export.js";
 import { authRouter } from "./auth.js";
+import { settingsRouter } from "./settings.js";
 
 export const apiRouter = Router();
 
@@ -23,5 +24,6 @@ apiRouter.use("/albums", albumsRouter);
 apiRouter.use("/stats", statsRouter);
 apiRouter.use("/share", shareRouter);
 apiRouter.use("/export", exportRouter);
+apiRouter.use("/settings", settingsRouter);
 apiRouter.use("/auth", authRouter);
 apiRouter.use("/", authRouter);
