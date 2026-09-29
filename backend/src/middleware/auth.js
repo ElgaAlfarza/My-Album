@@ -2,6 +2,7 @@ import { getMemberByAuthId } from "../services/photos.js";
 import { adminDb, createUserClient } from "../services/supabase.js";
 import { HttpError } from "../utils/httpError.js";
 import { env, isSupabaseConfigured } from "../config/env.js";
+import { verifyAdminPin } from "../services/pinService.js";
 
 // Mock admin fallback untuk kemudahan keluarga saat development
 const DEV_FALLBACK_MEMBER = {
@@ -49,7 +50,7 @@ export async function requireFamily(req, res, next) {
     }
 
     // 3. Akses via PIN Keluarga Sederhana
-    if (pinHeader && pinHeader === env.FAMILY_ADMIN_PIN) {
+    if (pinHeader && (await verifyAdminPin(pinHeader))) {
       if (isSupabaseConfigured()) {
         const { data: adminMember } = await adminDb
           .from("family_members")

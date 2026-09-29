@@ -478,11 +478,26 @@
       <!-- Panel 5: Keamanan & Cadangan -->
       <div class="admin-panel" id="tab-keamanan">
         <div class="admin-form-box">
-          <h3>🛡️ Keamanan PIN Masuk</h3>
-          <p style="font-size:14px;color:var(--on-surface-muted);margin-bottom:1rem">PIN saat ini yang digunakan untuk masuk mode admin keluarga adalah: <strong style="font-size:18px;color:var(--primary);letter-spacing:2px">1958</strong></p>
-          <div style="background:var(--surface-white);padding:0.75rem 1rem;border-radius:var(--radius-xs);border:1px solid var(--surface-line);font-size:13px;color:var(--on-surface-muted)">
-            Untuk privasi keluarga, lemari foto ini tidak memerlukan akun rumit dengan email/kata sandi panjang. Siapapun anggota keluarga yang mengetahui 4 angka PIN ini dapat mengelola lemari foto.
-          </div>
+          <h3>🛡️ Ganti PIN Masuk Admin</h3>
+          <p style="font-size:14px;color:var(--on-surface-muted);margin-bottom:1rem">Ganti 4 angka PIN admin untuk menjaga keamanan lemari foto kenangan keluarga Anda.</p>
+          <form id="change-pin-form" style="display:flex;flex-direction:column;gap:0.75rem;max-width:24rem">
+            <div class="admin-input-group">
+              <label for="old-pin-input">PIN Saat Ini</label>
+              <input type="password" id="old-pin-input" placeholder="Masukkan PIN lama (bawaan: 1958)" required>
+            </div>
+            <div class="admin-input-group">
+              <label for="new-pin-input">PIN Baru (Minimal 4 angka)</label>
+              <input type="password" id="new-pin-input" placeholder="Masukkan PIN baru" required minlength="4">
+            </div>
+            <div class="admin-input-group">
+              <label for="confirm-new-pin-input">Ulangi PIN Baru</label>
+              <input type="password" id="confirm-new-pin-input" placeholder="Ketik ulang PIN baru" required minlength="4">
+            </div>
+            <button type="submit" class="btn btn-primary" style="align-self:flex-start">
+              <span class="material-symbols-outlined">key</span>
+              Simpan PIN Baru
+            </button>
+          </form>
         </div>
 
         <div class="admin-form-box" style="margin-top:1.5rem">

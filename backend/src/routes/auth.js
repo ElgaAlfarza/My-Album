@@ -5,6 +5,7 @@ import { adminDb } from "../services/supabase.js";
 import { requireAdmin, requireFamily } from "../middleware/auth.js";
 import { badRequest, notFound } from "../utils/httpError.js";
 import { env, isSupabaseConfigured } from "../config/env.js";
+import { verifyAdminPin, updateAdminPin } from "../services/pinService.js";
 
 const avatarUpload = multer({
   storage: multer.memoryStorage(),
@@ -222,7 +223,8 @@ authRouter.get("/me", requireFamily, async (req, res) => {
 authRouter.post("/pin", async (req, res, next) => {
   try {
     const { pin, member_id } = req.body;
-    if (!pin || pin !== env.FAMILY_ADMIN_PIN) {
+    const isValid = await verifyAdminPin(pin);
+    if (!isValid) {
       throw badRequest("PIN keluarga tidak sesuai. Silakan coba lagi.");
     }
 
@@ -241,6 +243,38 @@ authRouter.post("/pin", async (req, res, next) => {
       member: member || { nama: "Ayah (Admin)", role: "admin" },
       token: "family-pin-session",
       message: "Selamat datang kembali di lemari kenangan keluarga.",
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
+/**
+ * POST /api/auth/change-pin
+ * Mengganti PIN admin keluarga (khusus admin)
+ */
+authRouter.post("/change-pin", requireFamily, requireAdmin, async (req, res, next) => {
+  try {
+    const { old_pin, new_pin } = req.body;
+    if (!old_pin || !new_pin) {
+      throw badRequest("PIN saat ini dan PIN baru wajib diisi.");
+    }
+
+    const isValid = await verifyAdminPin(old_pin);
+    if (!isValid) {
+      throw badRequest("PIN lama tidak cocok.");
+    }
+
+    const pinStr = String(new_pin).trim();
+    if (pinStr.length < 4) {
+      throw badRequest("PIN baru minimal harus 4 karakter/angka.");
+    }
+
+    const updated = await updateAdminPin(pinStr);
+    res.json({
+      ok: true,
+      message: "PIN Admin keluarga berhasil diubah!",
+      pin: updated,
     });
   } catch (err) {
     next(err);

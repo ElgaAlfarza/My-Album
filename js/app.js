@@ -1168,6 +1168,53 @@ function initAdmin() {
     }
   });
 
+  // Ganti PIN Admin
+  $("#change-pin-form")?.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const oldPin = $("#old-pin-input")?.value.trim();
+    const newPin = $("#new-pin-input")?.value.trim();
+    const confirmPin = $("#confirm-new-pin-input")?.value.trim();
+
+    if (!oldPin || !newPin || !confirmPin) {
+      toast("Semua bidang PIN wajib diisi.");
+      return;
+    }
+
+    if (newPin !== confirmPin) {
+      toast("Konfirmasi PIN baru tidak cocok.");
+      return;
+    }
+
+    if (newPin.length < 4) {
+      toast("PIN baru minimal harus 4 karakter/angka.");
+      return;
+    }
+
+    try {
+      const res = await fetch("/api/auth/change-pin", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-family-pin": getAdminPin(),
+        },
+        body: JSON.stringify({ old_pin: oldPin, new_pin: newPin }),
+      });
+      const data = await res.json();
+      if (res.ok && data.ok) {
+        localStorage.setItem("family_admin_pin", newPin);
+        $("#old-pin-input").value = "";
+        $("#new-pin-input").value = "";
+        $("#confirm-new-pin-input").value = "";
+        toast("✅ PIN Admin berhasil diganti! Gunakan PIN baru ini untuk masuk berikutnya.");
+      } else {
+        toast(data.message || "Gagal mengganti PIN.");
+      }
+    } catch {
+      localStorage.setItem("family_admin_pin", newPin);
+      toast("✅ PIN Admin berhasil disimpan di perangkat ini.");
+    }
+  });
+
   // Logout
   $("#admin-logout-btn")?.addEventListener("click", () => {
     setAdminLoggedIn(false);
