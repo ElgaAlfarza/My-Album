@@ -96,12 +96,12 @@
             </div>
           </div>
           <div class="upload-cta">
-            <input accept="image/*" class="visually-hidden" id="foto-input" type="file" hidden>
+            <input accept="image/*" class="visually-hidden" id="foto-input" type="file" multiple hidden>
             <button class="btn btn-primary" id="pick-photo" type="button">
               <span class="material-symbols-outlined">file_upload</span>
               + Pilih Foto dari HP / Komputer
             </button>
-            <span class="hint">Cukup satu ketukan jari</span>
+            <span class="hint">Bisa pilih 1 foto atau banyak foto sekaligus</span>
           </div>
         </div>
       </section>
@@ -258,15 +258,38 @@
       </div>
 
       <form id="upload-form" class="photo-edit" style="display:flex;flex-direction:column;gap:1.25rem;margin-top:0.5rem">
-        <!-- Preview Foto Terpilih -->
-        <div style="display:flex;gap:1rem;align-items:center;background:var(--surface-alt);padding:1rem;border-radius:var(--radius-sm);border:1px solid var(--surface-line)">
-          <img id="upload-preview-img" src="" alt="Pratinjau Foto" style="width:84px;height:84px;object-fit:cover;border-radius:8px;border:2px solid var(--surface-white);box-shadow:var(--shadow-sm);flex-shrink:0">
-          <div style="flex:1;overflow:hidden">
-            <strong id="upload-preview-filename" style="display:block;font-size:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">nama-foto.jpg</strong>
-            <span id="upload-preview-filesize" style="font-size:13px;color:var(--on-surface-muted)">Ukuran berkas</span>
-            <button type="button" id="upload-change-file-btn" class="btn btn-outline" style="min-height:32px;padding:0.2rem 0.75rem;font-size:12px;margin-top:6px">
-              Ganti Berkas Foto
-            </button>
+        <!-- Preview Foto Terpilih (Mendukung 1 atau Banyak Foto Sekaligus) -->
+        <div id="upload-preview-container" style="background:var(--surface-alt);padding:1rem;border-radius:var(--radius-sm);border:1px solid var(--surface-line)">
+          <!-- Mode 1 Foto -->
+          <div id="upload-single-preview" style="display:flex;gap:1rem;align-items:center">
+            <img id="upload-preview-img" src="" alt="Pratinjau Foto" style="width:80px;height:80px;object-fit:cover;border-radius:8px;border:2px solid var(--surface-white);box-shadow:var(--shadow-sm);flex-shrink:0">
+            <div style="flex:1;overflow:hidden">
+              <strong id="upload-preview-filename" style="display:block;font-size:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">nama-foto.jpg</strong>
+              <span id="upload-preview-filesize" style="font-size:13px;color:var(--on-surface-muted)">Ukuran berkas</span>
+              <div style="margin-top:6px">
+                <button type="button" id="upload-change-file-btn" class="btn btn-outline" style="min-height:30px;padding:0.2rem 0.75rem;font-size:12px">
+                  Ganti Berkas Foto
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Mode Banyak Foto Sekaligus -->
+          <div id="upload-multi-preview" style="display:none;flex-direction:column;gap:0.75rem">
+            <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:0.5rem">
+              <div>
+                <strong id="upload-multi-count" style="font-size:15px;color:var(--on-surface);display:block">0 Foto Terpilih</strong>
+                <span id="upload-multi-size" style="font-size:12px;color:var(--on-surface-muted)">Total ukuran: 0 MB</span>
+              </div>
+              <button type="button" id="upload-multi-change-btn" class="btn btn-outline" style="min-height:30px;padding:0.2rem 0.75rem;font-size:12px">
+                + Tambah / Ganti Pilihan Foto
+              </button>
+            </div>
+            <!-- Strip pratinjau thumbnail mini -->
+            <div id="upload-thumbnails-strip" style="display:flex;gap:8px;overflow-x:auto;padding-bottom:4px;scrollbar-width:none"></div>
+            <span style="font-size:12px;color:var(--primary);font-weight:600">
+              ✨ Seluruh foto ini akan langsung disimpan bersama ke dalam album pilihan Anda.
+            </span>
           </div>
         </div>
 
@@ -315,8 +338,11 @@
         <!-- 3. Keterangan Foto (Opsional) -->
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
           <label class="field" style="margin:0">
-            <span>Judul Kenangan</span>
+            <span id="upload-title-label">Judul Kenangan</span>
             <input type="text" id="upload-title-input" placeholder="Contoh: Sungkem Lebaran" maxlength="80">
+            <span id="upload-title-hint" style="font-size:11px;color:var(--on-surface-muted);display:none;margin-top:2px">
+              Opsional: Judul umum untuk semua foto terpilih
+            </span>
           </label>
           <label class="field" style="margin:0">
             <span>Tempat / Lokasi</span>
@@ -634,6 +660,6 @@
       <span>Simpan Kenangan Indah Bersama Keluarga</span>
     </div>
   </footer>
-  <script src="js/app.js?v=20260929-v5-clean"></script>
+  <script src="js/app.js?v=20260929-multi-upload"></script>
 </body>
 </html>

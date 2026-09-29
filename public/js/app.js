@@ -413,7 +413,7 @@ function toggleLike(id) {
   renderGallery();
 }
 
-let pendingUploadFile = null;
+let pendingUploadFiles = [];
 
 function populateUploadAlbums() {
   const select = $("#upload-target-album");
@@ -439,29 +439,104 @@ function populateUploadAlbums() {
   }
 }
 
-function openUploadModal(file) {
-  if (!file || !file.type.startsWith("image/")) {
-    toast("Pilih berkas foto JPG, PNG, atau WEBP ya.");
+function openUploadModal(filesInput) {
+  let files = [];
+  if (filesInput instanceof File) {
+    files = [filesInput];
+  } else if (filesInput instanceof FileList || Array.isArray(filesInput)) {
+    files = Array.from(filesInput).filter(
+      (f) => f && (f.type.startsWith("image/") || /\.(jpe?g|png|webp|jfif)$/i.test(f.name))
+    );
+  }
+
+  if (!files || files.length === 0) {
+    toast("Pilih berkas foto gambar (JPG, PNG, atau WEBP) ya.");
     return;
   }
 
-  pendingUploadFile = file;
+  pendingUploadFiles = files;
   const modal = $("#upload-modal");
   if (!modal) return;
 
-  const previewImg = $("#upload-preview-img");
-  if (previewImg) previewImg.src = URL.createObjectURL(file);
-
-  const nameEl = $("#upload-preview-filename");
-  if (nameEl) nameEl.textContent = file.name;
-
-  const sizeEl = $("#upload-preview-filesize");
-  if (sizeEl) sizeEl.textContent = `${(file.size / (1024 * 1024)).toFixed(2)} MB • Berkas Gambar`;
-
-  // Bersihkan nama file jadi judul yang rapi
-  const cleanTitle = file.name.replace(/\.[^.]+$/, "").replace(/[-_]/g, " ");
+  const singleWrap = $("#upload-single-preview");
+  const multiWrap = $("#upload-multi-preview");
+  const modalTitle = $("#upload-modal-title");
+  const submitBtn = $("#submit-upload-btn");
+  const titleHint = $("#upload-title-hint");
+  const titleLabel = $("#upload-title-label");
   const titleInput = $("#upload-title-input");
-  if (titleInput) titleInput.value = cleanTitle;
+
+  if (files.length === 1) {
+    const file = files[0];
+    if (singleWrap) singleWrap.style.display = "flex";
+    if (multiWrap) multiWrap.style.display = "none";
+    if (titleHint) titleHint.style.display = "none";
+    if (titleLabel) titleLabel.textContent = "Judul Kenangan";
+    if (modalTitle) modalTitle.textContent = "Simpan Foto ke Lemari";
+
+    const previewImg = $("#upload-preview-img");
+    if (previewImg) previewImg.src = URL.createObjectURL(file);
+
+    const nameEl = $("#upload-preview-filename");
+    if (nameEl) nameEl.textContent = file.name;
+
+    const sizeEl = $("#upload-preview-filesize");
+    if (sizeEl) sizeEl.textContent = `${(file.size / (1024 * 1024)).toFixed(2)} MB • Berkas Gambar`;
+
+    const cleanTitle = file.name.replace(/\.[^.]+$/, "").replace(/[-_]/g, " ");
+    if (titleInput) {
+      titleInput.value = cleanTitle;
+      titleInput.placeholder = "Contoh: Sungkem Lebaran";
+    }
+    if (submitBtn) {
+      submitBtn.disabled = false;
+      submitBtn.innerHTML = `<span class="material-symbols-outlined">save</span> Simpan ke Lemari Kenangan`;
+    }
+  } else {
+    // Mode Banyak Foto Sekaligus
+    if (singleWrap) singleWrap.style.display = "none";
+    if (multiWrap) multiWrap.style.display = "flex";
+    if (titleHint) titleHint.style.display = "block";
+    if (titleLabel) titleLabel.textContent = "Judul Umum (Opsional)";
+    if (modalTitle) modalTitle.textContent = `Simpan ${files.length} Foto Sekaligus`;
+
+    const countEl = $("#upload-multi-count");
+    if (countEl) countEl.textContent = `📸 ${files.length} Foto Terpilih`;
+
+    const totalBytes = files.reduce((acc, f) => acc + (f.size || 0), 0);
+    const sizeEl = $("#upload-multi-size");
+    if (sizeEl) sizeEl.textContent = `Total ukuran: ${(totalBytes / (1024 * 1024)).toFixed(2)} MB • ${files.length} berkas foto`;
+
+    const strip = $("#upload-thumbnails-strip");
+    if (strip) {
+      strip.innerHTML = "";
+      const maxThumbs = Math.min(files.length, 12);
+      for (let i = 0; i < maxThumbs; i++) {
+        const f = files[i];
+        const img = document.createElement("img");
+        img.src = URL.createObjectURL(f);
+        img.alt = f.name;
+        img.title = f.name;
+        img.style = "width:60px;height:60px;object-fit:cover;border-radius:8px;border:2px solid var(--surface-white);box-shadow:var(--shadow-sm);flex-shrink:0";
+        strip.appendChild(img);
+      }
+      if (files.length > 12) {
+        const moreBadge = document.createElement("div");
+        moreBadge.style = "width:60px;height:60px;display:flex;align-items:center;justify-content:center;background:var(--primary-tint);color:var(--primary);border-radius:8px;font-weight:700;font-size:12px;flex-shrink:0;border:1px dashed var(--primary)";
+        moreBadge.textContent = `+${files.length - 12}`;
+        strip.appendChild(moreBadge);
+      }
+    }
+
+    if (titleInput) {
+      titleInput.value = "";
+      titleInput.placeholder = "Contoh: Liburan Keluarga (Kosongkan jika pakai nama berkas)";
+    }
+    if (submitBtn) {
+      submitBtn.disabled = false;
+      submitBtn.innerHTML = `<span class="material-symbols-outlined">save</span> Simpan ${files.length} Foto ke Lemari Kenangan`;
+    }
+  }
 
   const placeInput = $("#upload-place-input");
   if (placeInput) placeInput.value = "";
@@ -491,12 +566,16 @@ function openUploadModal(file) {
 function closeUploadModal() {
   const modal = $("#upload-modal");
   if (modal) modal.classList.remove("is-open");
-  pendingUploadFile = null;
+  pendingUploadFiles = [];
   const submitBtn = $("#submit-upload-btn");
   if (submitBtn) {
     submitBtn.disabled = false;
     submitBtn.innerHTML = `<span class="material-symbols-outlined">save</span> Simpan ke Lemari Kenangan`;
   }
+  const closeBtn = $("#close-upload-modal");
+  if (closeBtn) closeBtn.disabled = false;
+  const cancelBtn = $("#cancel-upload-btn");
+  if (cancelBtn) cancelBtn.disabled = false;
 }
 
 async function loadServerPhotos() {
@@ -595,6 +674,9 @@ function initUploadHandlers() {
   $("#upload-change-file-btn")?.addEventListener("click", () => {
     $("#foto-input")?.click();
   });
+  $("#upload-multi-change-btn")?.addEventListener("click", () => {
+    $("#foto-input")?.click();
+  });
 
   $("#cancel-upload-btn")?.addEventListener("click", closeUploadModal);
   $("#close-upload-modal")?.addEventListener("click", closeUploadModal);
@@ -602,21 +684,24 @@ function initUploadHandlers() {
     if (e.target.id === "upload-modal") closeUploadModal();
   });
 
-  // Submit form simpan foto
+  // Submit form simpan foto (mendukung 1 atau banyak foto sekaligus)
   $("#upload-form")?.addEventListener("submit", async (e) => {
     e.preventDefault();
-    if (!pendingUploadFile) {
+    if (!pendingUploadFiles || pendingUploadFiles.length === 0) {
       toast("Pilih berkas foto terlebih dahulu.");
       return;
     }
 
+    const total = pendingUploadFiles.length;
     const submitBtn = $("#submit-upload-btn");
-    if (submitBtn) {
-      submitBtn.disabled = true;
-      submitBtn.innerHTML = `⏳ Sedang menyimpan foto ke lemari...`;
-    }
+    const closeBtn = $("#close-upload-modal");
+    const cancelBtn = $("#cancel-upload-btn");
 
-    const title = $("#upload-title-input")?.value.trim() || pendingUploadFile.name.replace(/\.[^.]+$/, "") || "Kenangan Baru";
+    if (submitBtn) submitBtn.disabled = true;
+    if (closeBtn) closeBtn.disabled = true;
+    if (cancelBtn) cancelBtn.disabled = true;
+
+    const baseTitle = $("#upload-title-input")?.value.trim() || "";
     const caption = $("#upload-caption-input")?.value.trim() || "Kenangan tersimpan di lemari keluarga.";
     const place = $("#upload-place-input")?.value.trim() || "Album Pribadi";
     const album = $("#upload-target-album")?.value || "Foto Keluarga";
@@ -651,15 +736,89 @@ function initUploadHandlers() {
       warm = false;
     }
 
-    const saveLocally = () => {
-      try {
-        const reader = new FileReader();
-        reader.onload = () => {
+    // Helper untuk upload 1 file dengan XMLHttpRequest
+    function uploadSingle(file, index) {
+      return new Promise((resolve) => {
+        let photoTitle = "";
+        if (baseTitle) {
+          photoTitle = total === 1 ? baseTitle : `${baseTitle} (${index + 1})`;
+        } else {
+          photoTitle = file.name.replace(/\.[^.]+$/, "").replace(/[-_]/g, " ") || `Foto Kenangan ${index + 1}`;
+        }
+
+        const fd = new FormData();
+        fd.append("photo", file);
+        fd.append("title", photoTitle);
+        fd.append("caption", caption);
+        fd.append("place", place);
+        fd.append("album", album);
+        fd.append("category", category);
+        fd.append("chip", chip);
+        if (takenDate) fd.append("taken_date", takenDate);
+        if (takenYear) fd.append("taken_year", takenYear);
+        fd.append("pin", getAdminPin());
+
+        const xhr = new XMLHttpRequest();
+        xhr.open("POST", "/api/photos/upload", true);
+        xhr.setRequestHeader("x-family-pin", getAdminPin());
+        xhr.timeout = 40000;
+
+        xhr.upload.onprogress = (evt) => {
+          if (evt.lengthComputable && submitBtn) {
+            const pct = Math.round((evt.loaded / evt.total) * 100);
+            submitBtn.innerHTML = `⏳ Mengunggah foto ${index + 1} dari ${total} (${pct}%)...`;
+          }
+        };
+
+        xhr.upload.onload = () => {
+          if (submitBtn) {
+            submitBtn.innerHTML = `⏳ Menyimpan foto ${index + 1} dari ${total}...`;
+          }
+        };
+
+        xhr.onload = () => {
           try {
-            const localId = `baru-${Date.now()}`;
-            state.extras.unshift({
-              id: localId,
-              title,
+            const data = JSON.parse(xhr.responseText || "{}");
+            if ((xhr.status === 200 || xhr.status === 201) && data.photo) {
+              const p = data.photo;
+              const newPhotoItem = {
+                id: p.id,
+                title: p.title || photoTitle,
+                caption: p.caption || caption,
+                place: p.place || place,
+                year: p.year || takenYear,
+                taken_date: p.taken_date || takenDate,
+                taken_date_label: p.taken_date_label || (takenDate || `Tahun ${takenYear}`),
+                category: p.category || category,
+                chip: p.chip || chip,
+                warm: p.warm !== undefined ? p.warm : warm,
+                liked: false,
+                album: p.album || album,
+                src: p.display_url || p.thumbnail_url || p.original_url || URL.createObjectURL(file),
+              };
+              resolve({ success: true, photo: newPhotoItem });
+              return;
+            }
+          } catch (err) {}
+          // Fallback lokal jika respon server tidak berhasil
+          fallbackLocal(file, photoTitle).then(resolve);
+        };
+
+        xhr.onerror = () => fallbackLocal(file, photoTitle).then(resolve);
+        xhr.ontimeout = () => fallbackLocal(file, photoTitle).then(resolve);
+
+        xhr.send(fd);
+      });
+    }
+
+    function fallbackLocal(file, photoTitle) {
+      return new Promise((resolve) => {
+        try {
+          const reader = new FileReader();
+          reader.onload = () => {
+            const localPhoto = {
+              id: `baru-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+              title: photoTitle,
               caption,
               place,
               year: takenYear,
@@ -671,124 +830,54 @@ function initUploadHandlers() {
               liked: false,
               album,
               src: reader.result,
-            });
-            persist();
-            closeUploadModal();
-            setView("semua");
-            renderGallery();
-            if (state.view === "album") renderAlbums();
-            toast(`✅ Foto "${title}" berhasil disimpan di album "${album}"!`);
-          } catch (storageErr) {
-            console.error("Gagal simpan lokal:", storageErr);
-            toast("⚠️ Memori browser penuh. Silakan kurangi sebagian foto.");
-            if (submitBtn) {
-              submitBtn.disabled = false;
-              submitBtn.innerHTML = `<span class="material-symbols-outlined">save</span> Simpan ke Lemari Kenangan`;
-            }
-          }
-        };
-        reader.onerror = () => {
-          toast("❌ Gagal membaca berkas foto.");
-          if (submitBtn) {
-            submitBtn.disabled = false;
-            submitBtn.innerHTML = `<span class="material-symbols-outlined">save</span> Simpan ke Lemari Kenangan`;
-          }
-        };
-        reader.readAsDataURL(pendingUploadFile);
-      } catch (e) {
-        console.error("Local save error:", e);
-        if (submitBtn) {
-          submitBtn.disabled = false;
-          submitBtn.innerHTML = `<span class="material-symbols-outlined">save</span> Simpan ke Lemari Kenangan`;
-        }
-      }
-    };
-
-    const fd = new FormData();
-    fd.append("photo", pendingUploadFile);
-    fd.append("title", title);
-    fd.append("caption", caption);
-    fd.append("place", place);
-    fd.append("album", album);
-    fd.append("category", category);
-    fd.append("chip", chip);
-    if (takenDate) fd.append("taken_date", takenDate);
-    if (takenYear) fd.append("taken_year", takenYear);
-    fd.append("pin", getAdminPin());
-
-    const xhr = new XMLHttpRequest();
-    xhr.open("POST", "/api/photos/upload", true);
-    xhr.setRequestHeader("x-family-pin", getAdminPin());
-    xhr.timeout = 40000; // 40 detik timeout maksimal
-
-    xhr.upload.onprogress = (event) => {
-      if (event.lengthComputable && submitBtn) {
-        const pct = Math.round((event.loaded / event.total) * 100);
-        submitBtn.innerHTML = `⏳ Mengunggah foto (${pct}%)...`;
-      }
-    };
-
-    xhr.upload.onload = () => {
-      if (submitBtn) {
-        submitBtn.innerHTML = `⏳ Menyimpan ke lemari kenangan...`;
-      }
-    };
-
-    xhr.onload = () => {
-      try {
-        const data = JSON.parse(xhr.responseText || "{}");
-        if ((xhr.status === 200 || xhr.status === 201) && data.photo) {
-          const p = data.photo;
-          const newPhotoItem = {
-            id: p.id,
-            title: p.title || title,
-            caption: p.caption || caption,
-            place: p.place || place,
-            year: p.year || takenYear,
-            taken_date: p.taken_date || takenDate,
-            taken_date_label: p.taken_date_label || (takenDate || `Tahun ${takenYear}`),
-            category: p.category || category,
-            chip: p.chip || chip,
-            warm: p.warm !== undefined ? p.warm : warm,
-            liked: false,
-            album: p.album || album,
-            src: p.display_url || p.thumbnail_url || p.original_url || URL.createObjectURL(pendingUploadFile),
+            };
+            state.extras.unshift(localPhoto);
+            resolve({ success: true, photo: localPhoto, isLocal: true });
           };
-
-          state.serverPhotos = [newPhotoItem, ...(state.serverPhotos || [])];
-          closeUploadModal();
-          setView("semua");
-          renderGallery();
-          if (state.view === "album") renderAlbums();
-          toast(`✅ Foto "${title}" berhasil disimpan di album "${album}"!`);
-          return;
+          reader.onerror = () => resolve({ success: false, file });
+          reader.readAsDataURL(file);
+        } catch (e) {
+          resolve({ success: false, file });
         }
+      });
+    }
 
-        // Jika server menolak atau ada error
-        const errMsg = data.message || `Server merespon kode ${xhr.status}`;
-        console.warn("Upload server tidak berhasil:", errMsg);
-        toast(`⚠️ ${errMsg}. Menyimpan cadangan perangkat...`);
-        saveLocally();
-      } catch (parseErr) {
-        console.warn("Error parsing response:", parseErr);
-        toast("⚠️ Respon server tidak terbaca. Menyimpan cadangan perangkat...");
-        saveLocally();
+    // Proses seluruh foto secara berurutan
+    let successCount = 0;
+    const addedPhotos = [];
+
+    for (let i = 0; i < total; i++) {
+      const file = pendingUploadFiles[i];
+      if (submitBtn) {
+        submitBtn.innerHTML = `⏳ Menyiapkan foto ${i + 1} dari ${total}...`;
       }
-    };
+      const res = await uploadSingle(file, i);
+      if (res.success && res.photo) {
+        successCount++;
+        if (!res.isLocal) {
+          addedPhotos.push(res.photo);
+        }
+      }
+    }
 
-    xhr.onerror = () => {
-      console.warn("XHR network error, falling back to local");
-      toast("⚠️ Jaringan tidak stabil, menyimpan ke memori perangkat...");
-      saveLocally();
-    };
+    if (addedPhotos.length > 0) {
+      state.serverPhotos = [...addedPhotos, ...(state.serverPhotos || [])];
+    }
 
-    xhr.ontimeout = () => {
-      console.warn("XHR timeout, falling back to local");
-      toast("⚠️ Waktu unggah habis, menyimpan foto ke memori perangkat...");
-      saveLocally();
-    };
+    persist();
+    closeUploadModal();
+    setView("semua");
+    renderGallery();
+    if (state.view === "album") renderAlbums();
+    updateStats();
 
-    xhr.send(fd);
+    if (successCount === total) {
+      toast(`✅ Berhasil menyimpan ${total} foto ke album "${album}"!`);
+    } else if (successCount > 0) {
+      toast(`✅ Berhasil menyimpan ${successCount} dari ${total} foto ke album "${album}".`);
+    } else {
+      toast("❌ Gagal menyimpan foto. Silakan periksa koneksi internet.");
+    }
   });
 }
 
@@ -872,8 +961,8 @@ function init() {
   });
 
   $("#foto-input")?.addEventListener("change", (e) => {
-    const file = e.target.files?.[0];
-    if (file) openUploadModal(file);
+    const files = e.target.files;
+    if (files && files.length > 0) openUploadModal(files);
     e.target.value = "";
   });
 
@@ -892,8 +981,10 @@ function init() {
       });
     });
     drop.addEventListener("drop", (e) => {
-      const file = e.dataTransfer?.files?.[0];
-      if (file && file.type.startsWith("image/")) openUploadModal(file);
+      const files = Array.from(e.dataTransfer?.files || []).filter(
+        (f) => f && (f.type.startsWith("image/") || /\.(jpe?g|png|webp|jfif)$/i.test(f.name))
+      );
+      if (files.length > 0) openUploadModal(files);
     });
   }
 
