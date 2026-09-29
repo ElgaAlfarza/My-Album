@@ -27,11 +27,11 @@ settingsRouter.get("/", async (req, res) => {
     let settings = { ...currentSettings };
 
     if (isSupabaseConfigured()) {
-      // 1. Ambil data profil admin dari tabel family_members
+      // 1. Ambil data profil admin & pengaturan umum dari tabel family_members
       try {
         const { data: adminMember } = await adminDb
           .from("family_members")
-          .select("nama, avatar_url")
+          .select("nama, avatar_url, no_hp")
           .eq("role", "admin")
           .eq("aktif", true)
           .limit(1)
@@ -41,27 +41,20 @@ settingsRouter.get("/", async (req, res) => {
           if (adminMember.nama) settings.admin_name = adminMember.nama;
           if (adminMember.avatar_url && !adminMember.avatar_url.includes("admin-1790655982077.webp")) {
             settings.admin_avatar = adminMember.avatar_url;
-          } else {
-            settings.admin_avatar = currentSettings.admin_avatar;
+          }
+
+          // Baca pengaturan umum dari kolom no_hp (JSON persisten di database)
+          if (adminMember.no_hp && adminMember.no_hp.startsWith("{")) {
+            try {
+              const saved = JSON.parse(adminMember.no_hp);
+              if (saved && typeof saved === "object") {
+                settings = { ...settings, ...saved };
+              }
+            } catch {}
           }
         }
       } catch (err) {
         console.warn("Gagal membaca profil admin:", err.message);
-      }
-
-      // 2. Ambil pengaturan umum jika tabel app_settings sudah dibuat di Supabase
-      try {
-        const { data: dbSettings } = await adminDb
-          .from("app_settings")
-          .select("value")
-          .eq("key", "general")
-          .maybeSingle();
-
-        if (dbSettings?.value && typeof dbSettings.value === "object") {
-          settings = { ...settings, ...dbSettings.value };
-        }
-      } catch {
-        // Abaikan jika tabel app_settings belum ada
       }
     }
 
@@ -105,9 +98,21 @@ const handleSaveSettings = async (req, res, next) => {
     currentSettings = updated;
 
     if (isSupabaseConfigured()) {
-      // 1. Simpan nama admin dan avatar ke tabel family_members
-      if (admin_name || admin_avatar) {
-        const updates = {};
+      // Simpan pengaturan umum ke kolom no_hp dan nama/avatar ke family_members (pasti ada & persisten di cloud!)
+      try {
+        const settingsToPersist = {
+          site_name: updated.site_name,
+          site_tagline: updated.site_tagline,
+          kicker: updated.kicker,
+          hero_title: updated.hero_title,
+          hero_lede: updated.hero_lede,
+          footer_title: updated.footer_title,
+          footer_text: updated.footer_text,
+        };
+
+        const updates = {
+          no_hp: JSON.stringify(settingsToPersist),
+        };
         if (admin_name) updates.nama = String(admin_name).trim();
         if (admin_avatar) updates.avatar_url = String(admin_avatar).trim();
 
@@ -115,17 +120,8 @@ const handleSaveSettings = async (req, res, next) => {
           .from("family_members")
           .update(updates)
           .eq("role", "admin");
-      }
-
-      // 2. Simpan pengaturan umum ke tabel app_settings jika tersedia
-      try {
-        await adminDb.from("app_settings").upsert({
-          key: "general",
-          value: updated,
-          updated_at: new Date().toISOString(),
-        });
-      } catch {
-        // Jika tabel app_settings belum ada, data tetap tersimpan di in-memory & family_members
+      } catch (err) {
+        console.warn("Gagal menyimpan ke family_members:", err.message);
       }
     }
 
