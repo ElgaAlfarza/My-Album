@@ -9,9 +9,13 @@ import { verifyAdminPin, updateAdminPin } from "../services/pinService.js";
 
 const avatarUpload = multer({
   storage: multer.memoryStorage(),
-  limits: { fileSize: 10 * 1024 * 1024 }, // 10MB max
+  limits: { fileSize: 15 * 1024 * 1024 }, // 15MB max
   fileFilter: (req, file, cb) => {
-    if (["image/jpeg", "image/jpg", "image/png", "image/webp"].includes(file.mimetype)) {
+    const mime = (file.mimetype || "").toLowerCase();
+    const isImage =
+      ["image/jpeg", "image/jpg", "image/png", "image/webp", "image/pjpeg", "image/jfif"].includes(mime) ||
+      /\.(jpe?g|png|webp|jfif)$/i.test(file.originalname || "");
+    if (isImage) {
       cb(null, true);
     } else {
       cb(badRequest("Format foto harus JPG, PNG, atau WEBP."));
@@ -95,11 +99,17 @@ authRouter.post(["/avatar", "/members/avatar"], avatarUpload.single("avatar"), r
     const file = req.file;
     if (!file) throw badRequest("Berkas foto profil wajib diunggah.");
 
-    // Kompresi avatar ke 256x256 WebP lingkaran proporsional
-    const webpBuffer = await sharp(file.buffer)
-      .resize(256, 256, { fit: "cover", position: "center" })
-      .webp({ quality: 85 })
-      .toBuffer();
+    // Kompresi avatar ke 256x256 WebP lingkaran proporsional (aman dengan fallback)
+    let webpBuffer;
+    try {
+      webpBuffer = await sharp(file.buffer)
+        .resize(256, 256, { fit: "cover", position: "center" })
+        .webp({ quality: 85 })
+        .toBuffer();
+    } catch (sharpErr) {
+      console.warn("Sharp avatar resize warning, memakai buffer asli:", sharpErr.message);
+      webpBuffer = file.buffer;
+    }
 
     let avatarUrl = "";
 
@@ -117,7 +127,7 @@ authRouter.post(["/avatar", "/members/avatar"], avatarUpload.single("avatar"), r
         if (!uploadError) {
           const { data } = await adminDb.storage
             .from(env.STORAGE_BUCKET)
-            .createSignedUrl(filePath, 315360000); // Tahan 10 tahun
+            .createSignedUrl(filePath, 31536000); // 1 tahun
           if (data?.signedUrl) {
             avatarUrl = data.signedUrl;
           }
@@ -134,10 +144,12 @@ authRouter.post(["/avatar", "/members/avatar"], avatarUpload.single("avatar"), r
 
     // Perbarui foto profil pada tabel family_members
     if (isSupabaseConfigured()) {
-      await adminDb
-        .from("family_members")
-        .update({ avatar_url: avatarUrl })
-        .eq("role", "admin");
+      try {
+        await adminDb
+          .from("family_members")
+          .update({ avatar_url: avatarUrl })
+          .eq("role", "admin");
+      } catch {}
     }
 
     res.json({
