@@ -101,7 +101,12 @@ function matchesFilter(photo) {
   if (state.filter === "pernikahan") return photo.category === "pernikahan" || photo.album === "Masa Muda & Pernikahan";
   if (state.filter === "liburan") return photo.category === "liburan" || photo.category === "cucu-liburan" || photo.album === "Cucu & Liburan";
   if (state.filter === "hari-raya") return photo.category === "hari-raya" || photo.album === "Hari Raya";
-  if (state.filter === "keluarga") return photo.category === "keluarga" || photo.category === "kenangan-rumah" || photo.album === "Foto Keluarga";
+  if (state.filter === "keluarga") {
+    // Foto keluarga: kategori keluarga/kenangan-rumah yang bukan masuk album custom
+    const standardAlbums = ["Foto Keluarga", "Masa Muda & Pernikahan", "Hari Raya", "Cucu & Liburan"];
+    const isStandardOrNoAlbum = !photo.album || standardAlbums.includes(photo.album);
+    return (photo.category === "keluarga" || photo.category === "kenangan-rumah") && isStandardOrNoAlbum;
+  }
   return photo.category === state.filter;
 
 }
@@ -609,6 +614,7 @@ async function loadServerPhotos() {
           src: p.display_url || p.thumbnail_url || p.original_url || p.src,
         }));
         renderGallery();
+        renderFilterBar();
         if (state.view === "album") renderAlbums();
       }
     }
@@ -627,6 +633,7 @@ async function loadServerAlbums() {
       if (data.items && Array.isArray(data.items)) {
         state.serverAlbums = data.items;
         populateUploadAlbums();
+        renderFilterBar();
       }
     }
   } catch {}
@@ -887,16 +894,49 @@ function initUploadHandlers() {
   });
 }
 
+function renderFilterBar() {
+  // Album-album standar (hardcoded)
+  const standardAlbumNames = ["Foto Keluarga", "Masa Muda & Pernikahan", "Hari Raya", "Cucu & Liburan"];
+  // Kumpulkan album custom dari foto yang sudah dimuat
+  const customAlbumNames = new Set();
+  allPhotos().forEach((p) => {
+    if (p.album && !standardAlbumNames.includes(p.album)) {
+      customAlbumNames.add(p.album);
+    }
+  });
+  // Tambah dari state.serverAlbums juga
+  if (state.serverAlbums && Array.isArray(state.serverAlbums)) {
+    state.serverAlbums.forEach((a) => {
+      const nama = a.nama || a.name;
+      if (nama && !standardAlbumNames.includes(nama)) customAlbumNames.add(nama);
+    });
+  }
+
+  const filterBar = $("#filter-bar");
+  if (!filterBar) return;
+
+  // Render tombol filter standar
+  const standardBtns = FILTERS.map((f, i) => {
+    const isActive = state.filter === f.id || (i === 0 && !state.filter);
+    return `<button class="filter-btn ${isActive ? "is-active" : ""}" type="button" data-filter="${f.id}" ${f.id === "semua" ? 'id="filter-all"' : ""}>${f.id === "semua" ? `${icon("filter_vintage")} Semua (${allPhotos().length} Foto)` : f.label}</button>`;
+  });
+
+  // Render tombol filter album custom
+  const customBtns = [...customAlbumNames].map((name) => {
+    const filterId = `album:${name}`;
+    const isActive = state.filter === filterId;
+    return `<button class="filter-btn ${isActive ? "is-active" : ""}" type="button" data-filter="${filterId}" data-custom-album="1">${escapeHtml(name)}</button>`;
+  });
+
+  filterBar.innerHTML = [...standardBtns, ...customBtns].join("");
+}
+
 function init() {
   $("#edit-album").innerHTML = ALBUMS.map(
     (album) => `<option value="${escapeHtml(album.name)}">${escapeHtml(album.name)}</option>`
   ).join("");
 
-  $("#filter-bar").innerHTML = FILTERS.map((f, i) => `
-    <button class="filter-btn ${i === 0 ? "is-active" : ""}" type="button" data-filter="${f.id}" ${f.id === "semua" ? 'id="filter-all"' : ""}>
-      ${f.id === "semua" ? `${icon("filter_vintage")} Semua (${allPhotos().length} Foto)` : f.label}
-    </button>
-  `).join("");
+  renderFilterBar();
 
   document.addEventListener("click", (e) => {
     const nav = e.target.closest("[data-nav]");
