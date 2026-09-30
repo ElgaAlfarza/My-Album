@@ -172,6 +172,10 @@ function photoCard(photo) {
           ${icon("zoom_in")}
           <span>Lihat Ukuran Penuh</span>
         </button>
+        <button class="btn btn-outline download-card-btn" type="button" data-download-src="${escapeHtml(photo.src)}" data-download-name="${escapeHtml(photo.title || "foto-kenangan")}" aria-label="Unduh foto ${title}">
+          ${icon("download")}
+          <span>Unduh</span>
+        </button>
       </div>
     </article>
   `;
@@ -968,6 +972,45 @@ function renderFilterBar() {
   filterBar.innerHTML = [...standardBtns, ...customBtns].join("");
 }
 
+// Fungsi unduh foto — mencoba fetch+blob agar nama file tersimpan rapi,
+// fallback ke window.open jika gambar dari domain lain (cross-origin)
+async function downloadImage(src, name) {
+  // Bersihkan nama file dari karakter tidak valid
+  const safeName = (name || "foto-kenangan")
+    .replace(/[<>:"/\\|?*]+/g, "-")
+    .replace(/\s+/g, "-")
+    .toLowerCase()
+    .slice(0, 80);
+
+  // Deteksi ekstensi dari URL atau default ke .jpg
+  const extMatch = src.match(/\.(jpe?g|png|webp|gif)(\?|$)/i);
+  const ext = extMatch ? extMatch[1].toLowerCase().replace("jpeg", "jpg") : "jpg";
+  const filename = `${safeName}.${ext}`;
+
+  toast("⏳ Menyiapkan unduhan foto...");
+
+  try {
+    const res = await fetch(src, { mode: "cors" });
+    if (!res.ok) throw new Error("fetch fail");
+    const blob = await res.blob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(() => {
+      URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+    }, 2000);
+    toast(`✅ Foto "${name}" berhasil diunduh!`);
+  } catch {
+    // Fallback: buka gambar di tab baru — pengguna bisa save manually
+    window.open(src, "_blank", "noopener");
+    toast("Foto dibuka di tab baru — tekan tahan lama lalu pilih \"Simpan Gambar\".");
+  }
+}
+
 function init() {
   $("#edit-album").innerHTML = ALBUMS.map(
     (album) => `<option value="${escapeHtml(album.name)}">${escapeHtml(album.name)}</option>`
@@ -1107,6 +1150,25 @@ function init() {
   $("#print-photo").addEventListener("click", () => {
     window.print();
   });
+
+  // Unduh foto dari modal
+  $("#download-photo")?.addEventListener("click", () => {
+    const photo = allPhotos().find((p) => p.id === state.activeId);
+    if (!photo || !photo.src) return;
+    downloadImage(photo.src, photo.title || "foto-kenangan");
+  });
+
+  // Unduh foto dari tombol di kartu (event delegation)
+  document.addEventListener("click", (e) => {
+    const dlBtn = e.target.closest(".download-card-btn");
+    if (dlBtn) {
+      e.stopPropagation();
+      const src = dlBtn.dataset.downloadSrc;
+      const name = dlBtn.dataset.downloadName || "foto-kenangan";
+      if (src) downloadImage(src, name);
+    }
+  });
+
   $("#guide-btn").addEventListener("click", openGuide);
   $("#close-guide").addEventListener("click", closeGuide);
   $("#guide-done").addEventListener("click", closeGuide);
