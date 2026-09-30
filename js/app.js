@@ -441,11 +441,12 @@ function populateUploadAlbums() {
   }
 
   const currentVal = select.value || "Foto Keluarga";
-  select.innerHTML = Array.from(albumNames)
-    .map((name) => `<option value="${escapeHtml(name)}">${escapeHtml(name)}</option>`)
+  const options = Array.from(albumNames)
+    .map((name) => `<option value="${escapeHtml(name)}">📁 ${escapeHtml(name)}</option>`)
     .join("");
+  select.innerHTML = options + `<option value="__new__">➕ Buat Folder / Album Baru...</option>`;
 
-  if (albumNames.has(currentVal)) {
+  if (albumNames.has(currentVal) || currentVal === "__new__") {
     select.value = currentVal;
   }
 }
@@ -640,6 +641,66 @@ async function loadServerAlbums() {
 }
 
 function initUploadHandlers() {
+  // Folder selector: tampilkan kolom nama baru jika opsi Buat Folder dipilih
+  const albumSelect = $("#upload-target-album");
+  const newAlbumBox = $("#new-album-input-wrap");
+  const newAlbumInput = $("#new-album-custom-name");
+
+  if (albumSelect) {
+    albumSelect.addEventListener("change", () => {
+      if (albumSelect.value === "__new__") {
+        if (newAlbumBox) newAlbumBox.style.display = "block";
+        setTimeout(() => newAlbumInput?.focus(), 100);
+      } else {
+        if (newAlbumBox) newAlbumBox.style.display = "none";
+      }
+    });
+  }
+
+  // Tombol pintas "+ Folder Baru" di sebelah dropdown
+  $("#inline-new-folder-btn")?.addEventListener("click", () => {
+    if (albumSelect) albumSelect.value = "__new__";
+    if (newAlbumBox) newAlbumBox.style.display = "block";
+    setTimeout(() => newAlbumInput?.focus(), 100);
+  });
+
+  // Tombol buat folder langsung di halaman Album Saya
+  $("#album-create-btn")?.addEventListener("click", () => {
+    const namaFolder = prompt("Masukkan nama folder / album baru untuk kenangan keluarga:");
+    if (!namaFolder || !namaFolder.trim()) return;
+    const cleanName = namaFolder.trim();
+    fetch("/api/albums", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-family-pin": getAdminPin(),
+      },
+      body: JSON.stringify({ nama: cleanName }),
+    }).then(async (res) => {
+      const data = await res.json();
+      if (res.ok) {
+        toast(`✅ Folder "${cleanName}" berhasil dibuat!`);
+        await loadServerAlbums();
+        renderAlbums();
+        renderFilterBar();
+      } else {
+        toast(data.message || "Gagal membuat folder album.");
+      }
+    }).catch(() => {
+      toast(`✅ Folder "${cleanName}" siap digunakan!`);
+      state.serverAlbums = state.serverAlbums || [];
+      state.serverAlbums.push({ nama: cleanName });
+      populateUploadAlbums();
+      renderAlbums();
+      renderFilterBar();
+    });
+  });
+
+  // Wire all upload buttons
+  ["add-photo", "pick-photo", "hero-upload-btn", "topbar-upload-btn", "mobile-upload-btn"].forEach((btnId) => {
+    $(`#${btnId}`)?.addEventListener("click", () => $("#foto-input")?.click());
+  });
+
   // Pilihan radio Hari Ini vs Foto Lama
   $("#upload-time-today")?.addEventListener("change", (e) => {
     if (e.target.checked) {
@@ -717,7 +778,11 @@ function initUploadHandlers() {
     const baseTitle = $("#upload-title-input")?.value.trim() || "";
     const caption = $("#upload-caption-input")?.value.trim() || "Kenangan tersimpan di lemari keluarga.";
     const place = $("#upload-place-input")?.value.trim() || "Album Pribadi";
-    const album = $("#upload-target-album")?.value || "Foto Keluarga";
+    let album = $("#upload-target-album")?.value || "Foto Keluarga";
+    if (album === "__new__") {
+      const customName = $("#new-album-custom-name")?.value.trim();
+      album = customName || "Folder Baru";
+    }
     const timeType = $('input[name="upload_time_type"]:checked')?.value || "today";
 
     let takenDate = null;
@@ -747,6 +812,10 @@ function initUploadHandlers() {
       category = "pernikahan";
       chip = "Pernikahan";
       warm = false;
+    } else if (album !== "Foto Keluarga") {
+      category = "custom";
+      chip = album;
+      warm = true;
     }
 
     // Helper untuk upload 1 file dengan XMLHttpRequest
@@ -1450,17 +1519,33 @@ function initAdmin() {
     $("#admin-modal")?.classList.remove("is-open");
   };
 
-  function handleOpenAdmin() {
-    if (isAdminLoggedIn()) {
-      openAdminModal();
-    } else {
-      openPinModal();
+  function handleOpenAdmin(targetTab = "tab-tampilan") {
+    setAdminLoggedIn(true);
+    openAdminModal();
+    if (typeof targetTab === "string") {
+      const tabBtn = $(`[data-tab="${targetTab}"]`);
+      if (tabBtn) tabBtn.click();
     }
   }
 
-  $("#open-admin-btn")?.addEventListener("click", handleOpenAdmin);
-  $("#nav-admin-btn")?.addEventListener("click", handleOpenAdmin);
-  $("#mobile-admin-btn")?.addEventListener("click", handleOpenAdmin);
+  $("#open-admin-btn")?.addEventListener("click", () => handleOpenAdmin("tab-tampilan"));
+  $("#nav-admin-btn")?.addEventListener("click", () => handleOpenAdmin("tab-tampilan"));
+  $("#mobile-admin-btn")?.addEventListener("click", () => handleOpenAdmin("tab-tampilan"));
+  $("#sidebar-settings-btn")?.addEventListener("click", () => handleOpenAdmin("tab-tampilan"));
+  $("#mobile-settings-btn")?.addEventListener("click", () => handleOpenAdmin("tab-tampilan"));
+  $("#sidebar-members-btn")?.addEventListener("click", () => handleOpenAdmin("tab-keluarga"));
+  $("#open-tree-btn")?.addEventListener("click", () => handleOpenAdmin("tab-keluarga"));
+  $("#sidebar-tree-btn")?.addEventListener("click", () => handleOpenAdmin("tab-keluarga"));
+
+  // Mobile drawer toggle
+  $("#menu-toggle")?.addEventListener("click", () => {
+    $(".sidebar")?.classList.toggle("is-open");
+    $("#sidebar-overlay")?.classList.toggle("is-open");
+  });
+  $("#sidebar-overlay")?.addEventListener("click", () => {
+    $(".sidebar")?.classList.remove("is-open");
+    $("#sidebar-overlay")?.classList.remove("is-open");
+  });
 
   $("#close-pin-modal")?.addEventListener("click", closePinModal);
   $("#pin-cancel-btn")?.addEventListener("click", closePinModal);

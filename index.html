@@ -3,166 +3,358 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Album Kenangan Saya</title>
+  <title>My Family — Digital Family Heirloom</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400..700;1,6..72,400..700&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400..700;1,6..72,400..700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Caveat:wght@600;700&display=swap" rel="stylesheet">
   <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24..48,400..700,0..1,-50..200" rel="stylesheet">
-  <link rel="stylesheet" href="css/styles.css?v=20260929-kisi-rapi">
+  <link rel="stylesheet" href="css/styles.css?v=20260930-myfamily">
 </head>
-<body>
+<body class="app-body">
   <a class="skip-link" href="#isi">Lewati ke isi</a>
-  <header class="site-header">
-    <div class="header-inner">
-      <a class="brand" href="./" data-nav="semua">
-        <img src="assets/logo.svg" alt="">
-        <span id="brand-name">Album Kenangan Saya</span>
+
+  <!-- Mobile Drawer Overlay -->
+  <div class="sidebar-overlay" id="sidebar-overlay"></div>
+
+  <!-- SIDEBAR KIRI -->
+  <aside class="sidebar">
+    <div class="sidebar-brand">
+      <a href="./" data-nav="semua" class="brand-link">
+        <div class="brand-icon">
+          <img src="assets/logo.svg" alt="Logo">
+        </div>
+        <div class="brand-text">
+          <span class="brand-title" id="brand-name">My Family</span>
+          <span class="brand-tagline">Digital Family Heirloom</span>
+        </div>
       </a>
-      <label class="search desktop-search">
-        <span class="icon material-symbols-outlined">search</span>
-        <input id="search" type="search" placeholder="Cari foto atau tahun..." autocomplete="off" aria-label="Cari foto atau tahun">
-      </label>
-      <nav class="nav-pills desktop-nav" aria-label="Menu utama">
-        <a href="#semua" data-nav="semua" class="is-active">Semua Foto</a>
-        <a href="#album" data-nav="album">Album Saya</a>
-        <a href="#favorit" data-nav="favorit">Favorit</a>
-        <button type="button" class="btn btn-outline nav-admin-btn" id="nav-admin-btn" style="min-height:36px;padding:0.35rem 0.75rem;font-size:13px;border-radius:999px">👑 Admin</button>
-      </nav>
-      <div class="header-actions">
-        <button class="btn btn-primary" id="add-photo" type="button">
-          <span class="material-symbols-outlined">add_photo_alternate</span>
-          <span class="btn-label">+ Tambah Foto</span>
-        </button>
-        <button class="avatar-btn" id="open-admin-btn" type="button" aria-label="Buka Pengaturan Admin" title="Pengaturan Admin & Profil Lemari">
-          <img class="avatar" id="header-avatar" src="https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=120&q=80" alt="Profil keluarga">
-          <span class="admin-badge" id="admin-badge" style="display:none">Admin</span>
-        </button>
-        <button class="menu-toggle" id="menu-toggle" type="button" aria-label="Buka menu">
-          <span class="material-symbols-outlined">menu</span>
-        </button>
+    </div>
+
+    <nav class="sidebar-nav" aria-label="Navigasi Utama">
+      <a href="#semua" data-nav="semua" class="sidebar-link is-active">
+        <span class="material-symbols-outlined">home</span>
+        <span>Beranda</span>
+      </a>
+      <a href="#album" data-nav="album" class="sidebar-link">
+        <span class="material-symbols-outlined">photo_library</span>
+        <span>Album</span>
+      </a>
+      <a href="#favorit" data-nav="favorit" class="sidebar-link">
+        <span class="material-symbols-outlined">favorite</span>
+        <span>Favorit</span>
+      </a>
+      <button type="button" class="sidebar-link" id="sidebar-tree-btn">
+        <span class="material-symbols-outlined">account_tree</span>
+        <span>Pohon Keluarga</span>
+      </button>
+      <button type="button" class="sidebar-link" id="sidebar-members-btn">
+        <span class="material-symbols-outlined">group</span>
+        <span>Anggota Keluarga</span>
+      </button>
+      <button type="button" class="sidebar-link" id="sidebar-settings-btn">
+        <span class="material-symbols-outlined">settings</span>
+        <span>Pengaturan</span>
+      </button>
+    </nav>
+
+    <div class="sidebar-footer">
+      <div class="privacy-card">
+        <div class="privacy-icon">
+          <span class="material-symbols-outlined">lock</span>
+        </div>
+        <div class="privacy-text">
+          <strong>Privat &amp; Terenkripsi</strong>
+          <span>Hanya untuk keluarga tercinta</span>
+        </div>
       </div>
     </div>
-    <nav class="mobile-nav" id="mobile-nav" aria-label="Menu ponsel">
-      <a href="#semua" data-nav="semua" class="btn btn-primary">Semua Foto</a>
-      <a href="#album" data-nav="album" class="btn btn-outline">Album Saya</a>
-      <a href="#favorit" data-nav="favorit" class="btn btn-outline">Favorit</a>
-      <button type="button" class="btn btn-outline nav-admin-btn" id="mobile-admin-btn">👑 Panel Admin</button>
-    </nav>
-    <div class="mobile-search-bar">
-      <label class="search">
-        <span class="icon material-symbols-outlined">search</span>
-        <input id="search-mobile" type="search" placeholder="Cari foto atau tahun..." autocomplete="off" aria-label="Cari foto atau tahun">
+  </aside>
+
+  <!-- KONTEN UTAMA DENGAN TOPBAR -->
+  <div class="main-wrapper">
+    <!-- TOPBAR -->
+    <header class="topbar">
+      <button class="topbar-menu-btn" id="menu-toggle" type="button" aria-label="Buka menu navigasi">
+        <span class="material-symbols-outlined">menu</span>
+      </button>
+
+      <!-- Search bar -->
+      <label class="topbar-search">
+        <span class="material-symbols-outlined search-icon">search</span>
+        <input id="search" type="search" placeholder="Cari foto, nama, atau tahun..." autocomplete="off" aria-label="Cari foto atau tahun">
+        <kbd class="search-kbd">⌘ K</kbd>
       </label>
-    </div>
-  </header>
 
-  <main>
-    <div class="glow glow-a"></div>
-    <div class="glow glow-b"></div>
-    <div class="wrap page" id="isi">
-      <section class="hero" id="hero">
-        <div>
-          <span class="kicker">
-            <span class="material-symbols-outlined">photo_album</span>
-            <span id="hero-kicker-text">Ruang Kenangan Pribadi</span>
-          </span>
-          <h1 id="hero-title-text">Selamat Datang di Lemari Kenangan</h1>
-          <p class="lede" id="hero-lede-text">Tempat aman untuk menyimpan, merapikan, dan membuka kembali foto-foto berharga Anda bersama keluarga tercinta dengan tenang dan mudah.</p>
-        </div>
-        <div class="stat-card">
-          <div class="icon-wrap">
-            <span class="material-symbols-outlined" style="font-variation-settings:'FILL' 1">auto_stories</span>
-          </div>
-          <div>
-            <strong id="photo-count">Memuat lemari...</strong>
-            <span>Tersimpan rapi &amp; abadi</span>
-          </div>
-        </div>
-      </section>
+      <!-- Topbar Actions -->
+      <div class="topbar-actions">
+        <button class="icon-btn notif-btn" type="button" title="Pemberitahuan" aria-label="Pemberitahuan">
+          <span class="material-symbols-outlined">notifications</span>
+          <span class="notif-dot"></span>
+        </button>
 
-      <section class="upload-panel" id="upload-panel">
-        <div class="upload-inner" id="upload-inner">
-          <div class="upload-copy">
-            <div class="upload-icon">
-              <span class="material-symbols-outlined" style="font-size:44px">add_a_photo</span>
+        <button class="btn btn-primary topbar-upload-btn" id="add-photo" type="button">
+          <span class="material-symbols-outlined">add_a_photo</span>
+          <span>+ Foto</span>
+        </button>
+
+        <button class="avatar-btn" id="open-admin-btn" type="button" aria-label="Profil & Pengaturan" title="Pengaturan Lemari Keluarga">
+          <img class="avatar" id="header-avatar" src="https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=120&q=80" alt="Profil">
+          <span class="material-symbols-outlined avatar-chevron">expand_more</span>
+        </button>
+      </div>
+    </header>
+
+    <!-- CONTENT WRAPPER (Main Grid + Right Widgets) -->
+    <div class="content-container">
+      <main class="main-content" id="isi">
+        <!-- 1. HERO SECTION -->
+        <section class="hero-banner" id="hero">
+          <div class="hero-copy">
+            <span class="kicker">
+              <span class="material-symbols-outlined">favorite</span>
+              <span id="hero-kicker-text">Selamat Datang di My Family</span>
+            </span>
+            <h1 id="hero-title-text">
+              Simpan Setiap Momen<br>
+              <span class="accent-text">Bersama Keluarga</span>
+            </h1>
+            <p class="lede" id="hero-lede-text">
+              Abadikan foto dan video keluarga dalam satu tempat aman, privat, dan mudah diakses kapan saja, dari generasi ke generasi.
+            </p>
+            <div class="hero-actions">
+              <button class="btn btn-hero-upload" id="hero-upload-btn" type="button">
+                <span class="material-symbols-outlined">cloud_upload</span>
+                <span>Unggah Foto/Video</span>
+              </button>
+              <button class="btn btn-hero-guide" id="guide-btn" type="button">
+                <span class="material-symbols-outlined">play_circle</span>
+                <span>Lihat Panduan</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- Polaroid Collage Visual -->
+          <div class="hero-visual">
+            <div class="polaroid-card polaroid-main">
+              <div class="polaroid-frame">
+                <img src="https://images.unsplash.com/photo-1511895426328-dc8714191300?auto=format&fit=crop&w=600&q=80" alt="Foto Keluarga">
+              </div>
+              <div class="polaroid-caption">
+                Keluarga adalah rumah selamanya ♡
+              </div>
+            </div>
+            <div class="polaroid-card polaroid-sub">
+              <div class="polaroid-frame">
+                <img src="https://images.unsplash.com/photo-1476514525535-07fb3b4ae5f1?auto=format&fit=crop&w=400&q=80" alt="Liburan">
+              </div>
+            </div>
+            <div class="stat-pill">
+              <span class="material-symbols-outlined">auto_stories</span>
+              <strong id="photo-count">Memuat lemari...</strong>
+            </div>
+          </div>
+        </section>
+
+        <!-- Hidden Global File Input -->
+        <input accept="image/*" class="visually-hidden" id="foto-input" type="file" multiple hidden>
+
+        <!-- 2. SEMUA FOTO VIEW -->
+        <div data-view="semua">
+          <!-- Toolbar Filter & View Switch -->
+          <section class="toolbar">
+            <div class="filters" id="filter-bar"></div>
+            <div class="view-switch">
+              <button class="is-active" id="mode-large" type="button" title="Tampilan Foto Nyaman (Besar)">
+                <span class="material-symbols-outlined">aspect_ratio</span>
+                <span class="switch-label">Besar</span>
+              </button>
+              <button id="mode-compact" type="button" title="Tampilan Kisi Rapi">
+                <span class="material-symbols-outlined">grid_view</span>
+                <span class="switch-label">Kisi</span>
+              </button>
+            </div>
+          </section>
+
+          <!-- Section Heading -->
+          <div class="section-heading-row">
+            <div class="section-title">
+              <span class="material-symbols-outlined title-icon">auto_awesome</span>
+              <h2>Momen Terbaru</h2>
+            </div>
+            <button class="link-btn" type="button" onclick="window.scrollTo({top: 400, behavior:'smooth'})">
+              <span>Semua Koleksi</span>
+              <span class="material-symbols-outlined">arrow_forward</span>
+            </button>
+          </div>
+
+          <!-- Gallery Grid -->
+          <section class="gallery" id="gallery-grid"></section>
+        </div>
+
+        <!-- 3. ALBUM SAYA VIEW -->
+        <div data-view="album" hidden>
+          <div class="section-heading-row">
+            <div>
+              <h2>📁 Album &amp; Folder Keluarga</h2>
+              <p class="lede">Foto dikelompokkan rapi seperti map kertas di lemari keluarga.</p>
+            </div>
+            <button class="btn btn-primary" id="album-create-btn" type="button" style="min-height:42px;padding:0.4rem 1.15rem;font-size:14px">
+              <span class="material-symbols-outlined">create_new_folder</span>
+              <span>+ Buat Folder Album</span>
+            </button>
+          </div>
+          <section class="album-grid" id="album-grid"></section>
+        </div>
+
+        <!-- 4. FAVORIT VIEW -->
+        <div data-view="favorit" hidden>
+          <div class="section-heading-row">
+            <div>
+              <h2>❤️ Tersimpan di Hati</h2>
+              <p class="lede">Foto-foto kenangan paling berharga yang Anda sukai.</p>
+            </div>
+          </div>
+          <section class="gallery" id="favorite-grid"></section>
+        </div>
+
+        <!-- 5. BOTTOM FAMILY BANNER -->
+        <section class="family-footer-banner">
+          <div class="banner-content">
+            <div class="banner-avatar-group">
+              <img src="https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=80&q=80" alt="">
+              <img src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=80&q=80" alt="">
             </div>
             <div>
-              <h2>Simpan Foto Kenangan Baru</h2>
-              <p>Tarik foto langsung ke sini atau tekan tombol di sebelah kanan.</p>
-              <div class="safe-note">
-                <span class="material-symbols-outlined">verified_user</span>
-                Format JPG &amp; PNG langsung tersimpan aman tanpa hilang
+              <h4>Jaga Kenangan, Wariskan Cinta</h4>
+              <p>Karena setiap foto, video, dan cerita adalah bagian dari warisan keluarga yang tak ternilai.</p>
+            </div>
+          </div>
+          <div class="banner-quote">
+            “Keluarga selalu ada di hati ♡”
+          </div>
+        </section>
+      </main>
+
+      <!-- RIGHT SIDEBAR WIDGETS (Desktop >= 1200px) -->
+      <aside class="widgets-column">
+        <!-- Widget 1: Kalender & Ulang Tahun -->
+        <div class="widget-card">
+          <div class="widget-header">
+            <div class="widget-header-title">
+              <span class="material-symbols-outlined widget-icon" style="color:var(--primary)">calendar_today</span>
+              <div>
+                <strong>Hari Ini</strong>
+                <span class="widget-date-sub" id="widget-today-date">30 September 2026</span>
               </div>
             </div>
           </div>
-          <div class="upload-cta">
-            <input accept="image/*" class="visually-hidden" id="foto-input" type="file" multiple hidden>
-            <button class="btn btn-primary" id="pick-photo" type="button">
-              <span class="material-symbols-outlined">file_upload</span>
-              + Pilih Foto dari HP / Komputer
-            </button>
-            <span class="hint">Bisa pilih 1 foto atau banyak foto sekaligus</span>
+
+          <div class="widget-subhead">
+            <span>Ulang Tahun Keluarga</span>
+            <a href="#keluarga" id="open-tree-btn" class="widget-link">Lihat Semua →</a>
+          </div>
+
+          <ul class="birthday-list">
+            <li class="birthday-item">
+              <img class="member-avatar" src="https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=80&q=80" alt="">
+              <div class="member-info">
+                <strong>Ibu Siti Rahayu</strong>
+                <span>Ibu • 56 tahun</span>
+              </div>
+              <span class="cake-badge">🎂</span>
+            </li>
+            <li class="birthday-item">
+              <img class="member-avatar" src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=80&q=80" alt="">
+              <div class="member-info">
+                <strong>Ahmad Fajar</strong>
+                <span>Anak • 28 tahun</span>
+              </div>
+              <span class="cake-badge">🎂</span>
+            </li>
+            <li class="birthday-item">
+              <img class="member-avatar" src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=80&q=80" alt="">
+              <div class="member-info">
+                <strong>Nenek Hj. Mariyam</strong>
+                <span>Nenek • 78 tahun</span>
+              </div>
+              <span class="cake-badge">🎂</span>
+            </li>
+          </ul>
+        </div>
+
+        <!-- Widget 2: Throwback Hari Ini -->
+        <div class="widget-card throwback-card">
+          <div class="throwback-badge">
+            <span class="material-symbols-outlined" style="font-size:16px">history</span>
+            <span>Throwback Hari Ini</span>
+          </div>
+          <div class="throwback-img-wrap">
+            <img src="https://images.unsplash.com/photo-1476514525535-07fb3b4ae5f1?auto=format&fit=crop&w=500&q=80" alt="Throwback">
+            <span class="throwback-year">15 Oktober 1995</span>
+          </div>
+          <div class="throwback-body">
+            <strong>Keluarga di Rumah Nenek</strong>
+            <p>Momen sederhana yang tak pernah terlupakan bersama seluruh sanak saudara.</p>
           </div>
         </div>
-      </section>
 
-      <div data-view="semua">
-        <section class="toolbar">
-          <div class="filters" id="filter-bar"></div>
-          <div class="view-switch">
-            <button class="is-active" id="mode-large" type="button">
-              <span class="material-symbols-outlined">aspect_ratio</span>
-              Foto Nyaman (Besar)
-            </button>
-            <button id="mode-compact" type="button">
-              <span class="material-symbols-outlined">grid_view</span>
-              Kisi Rapi
-            </button>
+        <!-- Widget 3: Pohon Keluarga -->
+        <div class="widget-card tree-widget-card">
+          <div class="tree-widget-head">
+            <span class="material-symbols-outlined" style="font-size:26px;color:var(--primary)">diversity_3</span>
+            <div>
+              <strong>Pohon Keluarga</strong>
+              <p>Jelajahi silsilah keluarga hingga generasi terbaru.</p>
+            </div>
           </div>
-        </section>
-        <section class="gallery" id="gallery-grid"></section>
-      </div>
-
-      <div data-view="album" hidden>
-        <section>
-          <h2>Album Saya</h2>
-          <p class="lede">Foto dikelompokkan seperti map kertas di lemari keluarga.</p>
-        </section>
-        <section class="album-grid" id="album-grid"></section>
-      </div>
-
-      <div data-view="favorit" hidden>
-        <section>
-          <h2>Tersimpan di Hati</h2>
-          <p class="lede">Hanya foto yang Anda tandai sebagai kenangan paling berharga.</p>
-        </section>
-        <section class="gallery" id="favorite-grid"></section>
-      </div>
-
-      <section class="help">
-        <div class="help-copy">
-          <div class="help-icon">
-            <span class="material-symbols-outlined" style="font-size:32px">support_agent</span>
-          </div>
-          <div>
-            <h4>Butuh bantuan melihat, mencetak, atau membagikan foto?</h4>
-            <p>Jangan ragu. Semua foto Anda sudah dicadangkan secara otomatis dan tidak akan hilang. Anda dapat meminta bantuan anak atau cucu dengan satu sentuhan.</p>
-          </div>
-        </div>
-        <div class="help-actions">
-          <button class="btn btn-outline" id="guide-btn" type="button">
-            <span class="material-symbols-outlined">menu_book</span>
-            Buku Panduan Besar
+          <button class="btn btn-primary tree-btn" type="button" id="sidebar-members-btn-2">
+            <span>Lihat Pohon Keluarga</span>
+            <span class="material-symbols-outlined">arrow_forward</span>
           </button>
-          <button class="btn btn-terracotta" id="share-btn" type="button">
-            <span class="material-symbols-outlined">share</span>
-            Kirim ke WhatsApp Anak
+        </div>
+
+        <!-- Widget 4: Voice Note -->
+        <div class="widget-card voicenote-card">
+          <div class="voicenote-icon">
+            <span class="material-symbols-outlined">mic</span>
+          </div>
+          <strong>Ingin bercerita lebih?</strong>
+          <p>Gunakan fitur voice note untuk berbagi cerita kenangan dengan mudah.</p>
+          <button class="btn btn-outline" type="button" onclick="toast('🎙️ Fitur rekam cerita suara akan segera hadir!')" style="font-size:13px;min-height:36px;border-radius:999px">
+            <span class="material-symbols-outlined" style="font-size:16px">mic</span>
+            <span>Mulai Voice Note</span>
           </button>
         </div>
-      </section>
+      </aside>
     </div>
-  </main>
+  </div>
 
+  <!-- MOBILE BOTTOM NAVIGATION (Layar HP) -->
+  <nav class="mobile-bottom-nav" aria-label="Menu ponsel">
+    <a href="#semua" data-nav="semua" class="bottom-nav-item is-active">
+      <span class="material-symbols-outlined">home</span>
+      <span>Beranda</span>
+    </a>
+    <a href="#album" data-nav="album" class="bottom-nav-item">
+      <span class="material-symbols-outlined">photo_library</span>
+      <span>Album</span>
+    </a>
+    <button type="button" class="bottom-nav-upload" id="mobile-upload-btn" aria-label="Unggah Foto Baru">
+      <span class="material-symbols-outlined">add_a_photo</span>
+    </button>
+    <a href="#favorit" data-nav="favorit" class="bottom-nav-item">
+      <span class="material-symbols-outlined">favorite</span>
+      <span>Favorit</span>
+    </a>
+    <button type="button" class="bottom-nav-item" id="mobile-settings-btn" aria-label="Pengaturan">
+      <span class="material-symbols-outlined">settings</span>
+      <span>Pengaturan</span>
+    </button>
+  </nav>
+
+  <!-- ======================================================== -->
+  <!-- MODAL: LIHAT & UBAH FOTO (Photo Modal)                   -->
+  <!-- ======================================================== -->
   <div class="modal" id="photo-modal" role="dialog" aria-modal="true" aria-labelledby="modal-title">
     <div class="modal-card">
       <div class="modal-head">
@@ -218,33 +410,35 @@
       <div class="modal-actions" id="photo-actions">
         <button class="btn btn-terracotta" id="modal-share-wa" type="button">
           <span class="material-symbols-outlined">share</span>
-          Kirim ke WhatsApp Anak
+          Kirim ke WhatsApp
         </button>
         <button class="btn btn-soft" id="zoom-more" type="button">
           <span class="material-symbols-outlined">zoom_in</span>
-          Perbesar Lagi
+          Perbesar
         </button>
         <button class="btn btn-sage" id="edit-photo" type="button">
           <span class="material-symbols-outlined">edit_note</span>
-          Ubah Keterangan
+          Ubah Cerita
         </button>
         <button class="btn btn-primary" id="print-photo" type="button">
           <span class="material-symbols-outlined">print</span>
-          Cetak Foto Ini
+          Cetak
         </button>
         <button class="btn btn-outline" id="delete-photo" type="button">
           <span class="material-symbols-outlined">delete</span>
-          Keluarkan dari Lemari
+          Hapus
         </button>
         <button class="btn btn-secondary" id="back-modal" type="button">
           <span class="material-symbols-outlined">arrow_back</span>
-          Kembali ke Lemari
+          Kembali
         </button>
       </div>
     </div>
   </div>
 
-  <!-- Modal Unggah Foto Kenangan Baru -->
+  <!-- ======================================================== -->
+  <!-- MODAL: UNGGAH FOTO & BUAT FOLDER BARU (Upload Modal)    -->
+  <!-- ======================================================== -->
   <div class="modal" id="upload-modal" role="dialog" aria-modal="true" aria-labelledby="upload-modal-title">
     <div class="modal-card" style="width:min(44rem, 100%)">
       <div class="modal-head">
@@ -258,7 +452,7 @@
       </div>
 
       <form id="upload-form" class="photo-edit" style="display:flex;flex-direction:column;gap:1.25rem;margin-top:0.5rem">
-        <!-- Preview Foto Terpilih (Mendukung 1 atau Banyak Foto Sekaligus) -->
+        <!-- Preview Foto Terpilih -->
         <div id="upload-preview-container" style="background:var(--surface-alt);padding:1rem;border-radius:var(--radius-sm);border:1px solid var(--surface-line)">
           <!-- Mode 1 Foto -->
           <div id="upload-single-preview" style="display:flex;gap:1rem;align-items:center">
@@ -285,27 +479,45 @@
                 + Tambah / Ganti Pilihan Foto
               </button>
             </div>
-            <!-- Strip pratinjau thumbnail mini -->
             <div id="upload-thumbnails-strip" style="display:flex;gap:8px;overflow-x:auto;padding-bottom:4px;scrollbar-width:none"></div>
             <span style="font-size:12px;color:var(--primary);font-weight:600">
-              ✨ Seluruh foto ini akan langsung disimpan bersama ke dalam album pilihan Anda.
+              ✨ Seluruh foto ini akan langsung disimpan bersama ke dalam folder pilihan Anda.
             </span>
           </div>
         </div>
 
-        <!-- 1. Pilihan Album / Lemari Penyimpanan -->
-        <label class="field" style="margin:0">
-          <span style="font-weight:700;font-size:15px">📁 Simpan di Album Mana?</span>
-          <select id="upload-target-album" required style="font-size:15px;padding:0.75rem">
-            <option value="Foto Keluarga">Foto Keluarga</option>
-            <option value="Hari Raya">Hari Raya (Lebaran, Natal, dsb)</option>
-            <option value="Cucu & Liburan">Cucu & Liburan</option>
-            <option value="Masa Muda & Pernikahan">Masa Muda & Pernikahan</option>
-          </select>
-          <span style="font-size:12px;color:var(--on-surface-muted);margin-top:2px">Foto akan langsung terkelompok rapi di album yang Anda pilih.</span>
-        </label>
+        <!-- 1. Pilihan Folder / Album dengan Fitur Buat Folder Sendiri -->
+        <div style="background:var(--surface-alt);padding:1.15rem;border-radius:var(--radius-sm);border:1px solid var(--surface-line)">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.4rem;flex-wrap:wrap;gap:6px">
+            <span style="font-weight:700;font-size:15px">📁 Simpan di Folder / Album Mana?</span>
+            <button type="button" id="inline-new-folder-btn" class="btn btn-outline" style="min-height:28px;padding:0.2rem 0.65rem;font-size:12px;border-radius:999px">
+              ➕ Buat Folder Baru
+            </button>
+          </div>
 
-        <!-- 2. Waktu Pengambilan Foto (Hari Ini vs Foto Lama) -->
+          <label class="field" style="margin:0">
+            <select id="upload-target-album" required style="font-size:15px;padding:0.75rem;background:#fff;border-radius:8px">
+              <option value="Foto Keluarga">📁 Foto Keluarga</option>
+              <option value="Hari Raya">📁 Hari Raya (Lebaran, Natal, dsb)</option>
+              <option value="Cucu & Liburan">📁 Cucu & Liburan</option>
+              <option value="Masa Muda & Pernikahan">📁 Masa Muda & Pernikahan</option>
+              <option value="__new__">➕ Buat Folder / Album Baru...</option>
+            </select>
+          </label>
+
+          <!-- Input Nama Folder Baru (Muncul otomatis saat opsi Buat Folder dipilih) -->
+          <div id="new-album-input-wrap" style="display:none;margin-top:0.75rem;background:#fff;padding:0.85rem;border-radius:8px;border:1.5px dashed var(--primary)">
+            <label class="field" style="margin:0">
+              <span style="font-weight:700;font-size:13.5px;color:var(--primary)">📝 Nama Folder / Album Baru:</span>
+              <input type="text" id="new-album-custom-name" placeholder="Misal: Liburan Bali, Teman Kuliah, My Friend..." maxlength="60" style="padding:0.65rem;font-size:14px">
+              <span style="font-size:12px;color:var(--on-surface-muted);margin-top:4px;display:block">
+                ✨ Folder ini akan otomatis dibuat dan foto langsung masuk ke dalamnya.
+              </span>
+            </label>
+          </div>
+        </div>
+
+        <!-- 2. Waktu Pengambilan Foto -->
         <div style="background:var(--surface-alt);padding:1.15rem;border-radius:var(--radius-sm);border:1px solid var(--surface-line)">
           <span style="font-weight:700;font-size:15px;display:block;margin-bottom:0.5rem">📅 Kapan Foto Ini Diambil?</span>
           <div style="display:flex;gap:12px;margin-bottom:1rem;flex-wrap:wrap">
@@ -319,7 +531,6 @@
             </label>
           </div>
 
-          <!-- Kalender & Input Tahun -->
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px" id="upload-date-container">
             <label class="field" style="margin:0">
               <span style="font-size:13px;font-weight:600">Pilih Tanggal di Kalender</span>
@@ -335,7 +546,7 @@
           </span>
         </div>
 
-        <!-- 3. Keterangan Foto (Opsional) -->
+        <!-- 3. Keterangan Foto -->
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
           <label class="field" style="margin:0">
             <span id="upload-title-label">Judul Kenangan</span>
@@ -367,24 +578,24 @@
     </div>
   </div>
 
+  <!-- MODAL PANDUAN -->
   <div class="modal" id="guide-modal" role="dialog" aria-modal="true" aria-labelledby="guide-title">
     <div class="modal-card guide-card">
       <div class="modal-head">
         <div>
-          <div class="place">Panduan sederhana</div>
-          <h2 id="guide-title">Buku Panduan Besar</h2>
+          <div class="place">Panduan Sederhana</div>
+          <h2 id="guide-title">Buku Panduan Keluarga</h2>
         </div>
         <button class="icon-btn" id="close-guide" type="button" aria-label="Tutup panduan">
           <span class="material-symbols-outlined">close</span>
         </button>
       </div>
       <ol class="guide-steps">
-        <li>Tekan <strong>+ Tambah Foto</strong> untuk menyimpan kenangan baru ke lemari.</li>
-        <li>Gunakan kotak pencarian atau tombol kategori untuk menemukan foto lama.</li>
-        <li>Tekan <strong>Suka Foto Ini</strong> agar kenangan tersimpan di halaman Favorit.</li>
-        <li>Tekan foto atau <strong>Lihat Ukuran Penuh</strong> jika ingin melihat lebih jelas, memperbesar, atau mencetak.</li>
-        <li>Tekan <strong>Ubah Keterangan</strong> untuk menulis judul, tahun, tempat, dan cerita foto.</li>
-        <li>Buka <strong>Album Saya</strong> untuk melihat foto yang sudah dikelompokkan seperti map kertas.</li>
+        <li>Tekan <strong>+ Foto</strong> untuk menyimpan foto kenangan baru kapan saja.</li>
+        <li>Anda bisa <strong>membuat folder baru sendiri</strong> langsung di jendela unggah foto.</li>
+        <li>Gunakan kotak pencarian atau tombol filter untuk menemukan foto kenangan.</li>
+        <li>Tekan ikon <strong>Hati / Favorit</strong> agar kenangan tersimpan di halaman Favorit.</li>
+        <li>Buka <strong>Album</strong> untuk melihat foto yang sudah tertata rapi dalam map kenangan.</li>
       </ol>
       <div class="modal-actions">
         <a class="btn btn-outline" id="guide-download-zip" href="/api/export" target="_blank" download style="text-decoration:none">
@@ -396,6 +607,7 @@
     </div>
   </div>
 
+  <!-- MODAL KONFIRMASI HAPUS -->
   <div class="modal" id="confirm-modal" role="dialog" aria-modal="true" aria-labelledby="confirm-title">
     <div class="modal-card confirm-card">
       <h2 id="confirm-title">Keluarkan foto ini?</h2>
@@ -407,52 +619,31 @@
     </div>
   </div>
 
-  <!-- Modal Masuk PIN Admin -->
-  <div class="modal" id="pin-modal" role="dialog" aria-modal="true" aria-labelledby="pin-title">
-    <div class="modal-card pin-card">
-      <div class="modal-head" style="justify-content:center;position:relative">
-        <h2 id="pin-title">👑 Masuk Mode Admin</h2>
-        <button class="icon-btn" id="close-pin-modal" type="button" aria-label="Tutup" style="position:absolute;right:0;top:0">
-          <span class="material-symbols-outlined">close</span>
-        </button>
-      </div>
-      <p style="color:var(--on-surface-muted);margin-top:0.5rem">Masukkan 4 angka PIN keluarga untuk membuka panel pengaturan lemari kenangan.</p>
-      <form id="pin-form">
-        <input type="password" maxlength="4" pattern="[0-9]*" inputmode="numeric" id="pin-input" class="pin-input" placeholder="••••" autocomplete="off" autofocus>
-        <p class="hint" style="font-size:13px;color:var(--on-surface-muted);margin-bottom:1rem">PIN bawaan keluarga: <strong style="color:var(--primary)">1958</strong></p>
-        <div class="modal-actions">
-          <button class="btn btn-outline" id="pin-cancel-btn" type="button">Batal</button>
-          <button class="btn btn-primary" id="pin-submit-btn" type="submit">Buka Lemari Admin</button>
-        </div>
-      </form>
-    </div>
-  </div>
-
-  <!-- Modal Panel Admin Utama -->
+  <!-- MODAL PENGATURAN KELUARGA (Tanpa Kunci PIN) -->
   <div class="modal" id="admin-modal" role="dialog" aria-modal="true" aria-labelledby="admin-panel-title">
     <div class="modal-card admin-modal-card">
       <div class="modal-head">
         <div>
           <div class="place" style="display:flex;align-items:center;gap:6px">
-            <span class="material-symbols-outlined" style="font-size:18px">shield_person</span>
-            Mode Pengelola Aktif
+            <span class="material-symbols-outlined" style="font-size:18px">settings</span>
+            Pengaturan Lemari Keluarga
           </div>
-          <h2 id="admin-panel-title">Pengaturan Lemari & Profil</h2>
+          <h2 id="admin-panel-title">Profil &amp; Kelola Lemari</h2>
         </div>
-        <button class="icon-btn" id="close-admin-modal" type="button" aria-label="Tutup panel admin">
+        <button class="icon-btn" id="close-admin-modal" type="button" aria-label="Tutup panel pengaturan">
           <span class="material-symbols-outlined">close</span>
         </button>
       </div>
 
-      <!-- Tab Navigasi Admin -->
+      <!-- Tab Navigasi Pengaturan -->
       <div class="admin-tabs" role="tablist">
         <button class="admin-tab-btn is-active" data-tab="tab-tampilan" type="button">
           <span class="material-symbols-outlined">palette</span>
-          Tampilan & Profil
+          Tampilan &amp; Profil
         </button>
         <button class="admin-tab-btn" data-tab="tab-album" type="button">
           <span class="material-symbols-outlined">photo_library</span>
-          Kelola Album
+          Kelola Folder Album
         </button>
         <button class="admin-tab-btn" data-tab="tab-keluarga" type="button">
           <span class="material-symbols-outlined">group</span>
@@ -464,7 +655,7 @@
         </button>
         <button class="admin-tab-btn" data-tab="tab-keamanan" type="button">
           <span class="material-symbols-outlined">security</span>
-          Keamanan & Cadangan
+          Cadangan Foto
         </button>
       </div>
 
@@ -474,16 +665,16 @@
           <div class="admin-avatar-box">
             <img class="admin-avatar-preview" id="admin-avatar-preview" src="https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=256&q=80" alt="Preview Foto Profil">
             <div class="admin-avatar-actions" style="flex:1">
-              <strong>Foto Profil / Avatar Admin</strong>
-              <span style="font-size:13px;color:var(--on-surface-muted)">Foto ini akan muncul di pojok kanan atas lemari kenangan.</span>
+              <strong>Foto Profil Keluarga</strong>
+              <span style="font-size:13px;color:var(--on-surface-muted)">Foto ini muncul di pojok kanan atas lemari kenangan.</span>
               <div style="display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-top:6px">
                 <input type="file" id="admin-avatar-file-input" accept="image/png,image/jpeg,image/webp,image/jpg" style="position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0;">
                 <label for="admin-avatar-file-input" class="btn btn-primary" id="pick-avatar-btn" style="min-height:38px;padding:0.4rem 1.1rem;font-size:13px;cursor:pointer;display:inline-flex;align-items:center;gap:6px">
                   <span class="material-symbols-outlined" style="font-size:18px">photo_camera</span>
-                  Pilih Foto dari HP / Komputer
+                  Pilih Foto Profil Baru
                 </label>
                 <button type="button" class="btn btn-outline" id="reset-avatar-btn" style="min-height:38px;padding:0.4rem 0.9rem;font-size:13px">
-                  Gunakan Foto Bawaan
+                  Gunakan Bawaan
                 </button>
               </div>
               <input type="hidden" id="admin-avatar-url-input">
@@ -492,35 +683,34 @@
           </div>
 
           <div class="admin-input-group">
-            <label for="set-admin-name">Nama Anda (Pengelola / Admin)</label>
-            <input type="text" id="set-admin-name" placeholder="Contoh: Ayah, Ibu, atau Elga Alfarza" value="Ayah (Admin)" required>
+            <label for="set-admin-name">Nama Panggilan Keluarga</label>
+            <input type="text" id="set-admin-name" placeholder="Contoh: Keluarga Sudirman, Ayah, atau Ibu" value="Keluarga Tercinta" required>
           </div>
 
           <div class="admin-input-group">
             <label for="set-site-name">Nama Lemari / Website</label>
-            <input type="text" id="set-site-name" placeholder="Contoh: Album Kenangan Keluarga Sudirman" value="Album Kenangan Saya" required>
-            <span class="hint" style="font-size:12px;color:var(--on-surface-muted)">Nama ini tampil pada pojok kiri atas dan judul tab peramban.</span>
+            <input type="text" id="set-site-name" placeholder="Contoh: My Family" value="My Family" required>
           </div>
 
           <div class="admin-input-group">
-            <label for="set-kicker">Teks Kicker / Subjudul Kecil</label>
-            <input type="text" id="set-kicker" placeholder="Contoh: Ruang Kenangan Pribadi" value="Ruang Kenangan Pribadi">
+            <label for="set-kicker">Teks Kicker Sambutan</label>
+            <input type="text" id="set-kicker" placeholder="Contoh: Selamat Datang di My Family" value="Selamat Datang di My Family">
           </div>
 
           <div class="admin-input-group">
             <label for="set-hero-title">Judul Sambutan Utama</label>
-            <input type="text" id="set-hero-title" placeholder="Contoh: Selamat Datang di Lemari Kenangan" value="Selamat Datang di Lemari Kenangan" required>
+            <input type="text" id="set-hero-title" placeholder="Contoh: Simpan Setiap Momen Bersama Keluarga" value="Simpan Setiap Momen Bersama Keluarga" required>
           </div>
 
           <div class="admin-input-group">
             <label for="set-hero-lede">Keterangan Sambutan Hangat</label>
-            <textarea id="set-hero-lede" rows="3" placeholder="Tulis kalimat sambutan untuk keluarga..."></textarea>
+            <textarea id="set-hero-lede" rows="3" placeholder="Tulis kalimat sambutan untuk keluarga...">Abadikan foto dan video keluarga dalam satu tempat aman, privat, dan mudah diakses kapan saja, dari generasi ke generasi.</textarea>
           </div>
 
           <div class="modal-actions" style="justify-content:flex-end;margin-top:1.5rem">
             <button class="btn btn-primary" type="submit" id="save-settings-btn" style="min-height:48px;padding:0.75rem 2rem">
               <span class="material-symbols-outlined">save</span>
-              Simpan Perubahan Tampilan
+              Simpan Perubahan
             </button>
           </div>
         </form>
@@ -528,38 +718,33 @@
 
       <!-- Panel 2: Kelola Album -->
       <div class="admin-panel" id="tab-album">
-        <p style="color:var(--on-surface-soft)">Di sini Anda bisa membuat album baru atau mengelola album map kenangan keluarga.</p>
-        
+        <p style="color:var(--on-surface-soft)">Di sini Anda bisa membuat folder album baru atau mengelola folder yang sudah ada.</p>
         <div class="admin-form-box">
-          <h3>+ Buat Album Kenangan Baru</h3>
+          <h3>+ Buat Folder Album Baru</h3>
           <form id="create-album-form" style="display:flex;flex-direction:column;gap:0.75rem">
             <div class="admin-input-group">
-              <label for="new-album-name">Nama Album</label>
-              <input type="text" id="new-album-name" placeholder="Contoh: Haji 2010, Rumah Masa Kecil, Sepeda Kakek" required>
+              <label for="new-album-name">Nama Folder Album</label>
+              <input type="text" id="new-album-name" placeholder="Contoh: Liburan Bali, Wisuda, Teman SMA..." required>
             </div>
             <div class="admin-input-group">
               <label for="new-album-desc">Deskripsi Singkat</label>
-              <input type="text" id="new-album-desc" placeholder="Contoh: Kumpulan foto kenangan perjalanan ibadah ke tanah suci.">
+              <input type="text" id="new-album-desc" placeholder="Contoh: Kumpulan foto kenangan perjalanan wisata...">
             </div>
             <button type="submit" class="btn btn-primary" style="align-self:flex-start">
               <span class="material-symbols-outlined">create_new_folder</span>
-              Buat Album Sekarang
+              Buat Folder Sekarang
             </button>
           </form>
         </div>
-
         <div style="margin-top:1.5rem">
-          <h3 style="font-size:18px;margin-bottom:0.75rem">Daftar Album Saat Ini</h3>
-          <div class="admin-list" id="admin-album-list">
-            <!-- Diisi secara dinamis oleh JavaScript -->
-          </div>
+          <h3 style="font-size:18px;margin-bottom:0.75rem">Daftar Folder Album Saat Ini</h3>
+          <div class="admin-list" id="admin-album-list"></div>
         </div>
       </div>
 
       <!-- Panel 3: Anggota Keluarga -->
       <div class="admin-panel" id="tab-keluarga">
-        <p style="color:var(--on-surface-soft)">Kelola daftar anggota keluarga yang bisa ditandai pada foto kenangan.</p>
-
+        <p style="color:var(--on-surface-soft)">Kelola daftar nama anggota keluarga tercinta.</p>
         <div class="admin-form-box">
           <h3>+ Tambah Anggota Keluarga Baru</h3>
           <form id="add-member-form" style="display:flex;flex-direction:column;gap:0.75rem">
@@ -569,10 +754,10 @@
                 <input type="text" id="new-member-name" placeholder="Contoh: Mas Budi, Siti, Cucu Alif" required>
               </div>
               <div class="admin-input-group">
-                <label for="new-member-role">Peran Keluarga</label>
+                <label for="new-member-role">Hubungan Keluarga</label>
                 <select id="new-member-role">
-                  <option value="anggota">Anggota Keluarga Biasa</option>
-                  <option value="admin">Pengelola (Admin)</option>
+                  <option value="anggota">Anggota Keluarga</option>
+                  <option value="admin">Orang Tua / Pengelola</option>
                 </select>
               </div>
             </div>
@@ -586,12 +771,9 @@
             </button>
           </form>
         </div>
-
         <div style="margin-top:1.5rem">
-          <h3 style="font-size:18px;margin-bottom:0.75rem">Daftar Anggota Terdaftar</h3>
-          <div class="admin-list" id="admin-member-list">
-            <!-- Diisi secara dinamis oleh JavaScript -->
-          </div>
+          <h3 style="font-size:18px;margin-bottom:0.75rem">Daftar Anggota Keluarga</h3>
+          <div class="admin-list" id="admin-member-list"></div>
         </div>
       </div>
 
@@ -599,67 +781,29 @@
       <div class="admin-panel" id="tab-sampah">
         <div style="background:var(--surface-alt);padding:1rem;border-radius:var(--radius-sm);margin-bottom:1rem;border:1px solid var(--surface-line)">
           <strong>Prinsip "Foto Tidak Boleh Hilang":</strong>
-          <p style="margin:4px 0 0;font-size:13px;color:var(--on-surface-muted)">Foto yang dikeluarkan dari lemari tetap tersimpan aman di tong sampah selama 30 hari sebelum dibersihkan. Anda bisa memulihkannya kapan saja ke galeri utama.</p>
+          <p style="margin:4px 0 0;font-size:13px;color:var(--on-surface-muted)">Foto yang dikeluarkan dari lemari tetap tersimpan aman di tong sampah selama 30 hari. Anda bisa memulihkannya kapan saja ke galeri utama.</p>
         </div>
-        <div class="admin-list" id="admin-trash-list">
-          <!-- Diisi secara dinamis oleh JavaScript -->
-        </div>
+        <div class="admin-list" id="admin-trash-list"></div>
       </div>
 
-      <!-- Panel 5: Keamanan & Cadangan -->
+      <!-- Panel 5: Cadangan Penuh (ZIP Backup) -->
       <div class="admin-panel" id="tab-keamanan">
         <div class="admin-form-box">
-          <h3>🛡️ Ganti PIN Masuk Admin</h3>
-          <p style="font-size:14px;color:var(--on-surface-muted);margin-bottom:1rem">Ganti 4 angka PIN admin untuk menjaga keamanan lemari foto kenangan keluarga Anda.</p>
-          <form id="change-pin-form" style="display:flex;flex-direction:column;gap:0.75rem;max-width:24rem">
-            <div class="admin-input-group">
-              <label for="old-pin-input">PIN Saat Ini</label>
-              <input type="password" id="old-pin-input" placeholder="Masukkan PIN lama (bawaan: 1958)" required>
-            </div>
-            <div class="admin-input-group">
-              <label for="new-pin-input">PIN Baru (Minimal 4 angka)</label>
-              <input type="password" id="new-pin-input" placeholder="Masukkan PIN baru" required minlength="4">
-            </div>
-            <div class="admin-input-group">
-              <label for="confirm-new-pin-input">Ulangi PIN Baru</label>
-              <input type="password" id="confirm-new-pin-input" placeholder="Ketik ulang PIN baru" required minlength="4">
-            </div>
-            <button type="submit" class="btn btn-primary" style="align-self:flex-start">
-              <span class="material-symbols-outlined">key</span>
-              Simpan PIN Baru
-            </button>
-          </form>
-        </div>
-
-        <div class="admin-form-box" style="margin-top:1.5rem">
-          <h3>📦 Cadangan Penuh (ZIP Backup)</h3>
+          <h3>📦 Unduh Cadangan Seluruh Foto (ZIP)</h3>
           <p style="font-size:14px;color:var(--on-surface-muted);margin-bottom:1rem">Unduh seluruh arsip foto keluarga dalam resolusi aslinya ke dalam satu berkas ZIP untuk disimpan di flashdisk atau komputer rumah.</p>
-          <a class="btn btn-outline" href="/api/export" target="_blank" download style="text-decoration:none;display:inline-flex;align-items:center;gap:6px">
+          <a class="btn btn-primary" href="/api/export" target="_blank" download style="text-decoration:none;display:inline-flex;align-items:center;gap:6px">
             <span class="material-symbols-outlined">folder_zip</span>
-            Unduh Seluruh Foto Keluarga (ZIP)
+            Unduh Cadangan Foto (ZIP)
           </a>
         </div>
-
-        <div style="margin-top:2rem;padding-top:1.5rem;border-top:1px solid var(--surface-line);display:flex;justify-content:flex-end">
-          <button type="button" class="btn btn-terracotta" id="admin-logout-btn">
-            <span class="material-symbols-outlined">logout</span>
-            Keluar dari Mode Admin
-          </button>
-        </div>
       </div>
-
     </div>
   </div>
 
-  <footer class="site-footer">
-    <div class="wrap footer-inner">
-      <div>
-        <strong id="footer-brand-name">Album Kenangan Saya</strong>
-        <p>Menjaga warisan kisah keluarga tetap abadi, tenang, dan mudah dijangkau.</p>
-      </div>
-      <span>Simpan Kenangan Indah Bersama Keluarga</span>
-    </div>
-  </footer>
-  <script src="js/app.js?v=20260929-multi-upload"></script>
+  <!-- Toast Notification -->
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+  <!-- Scripts -->
+  <script src="js/app.js?v=20260930-myfamily"></script>
 </body>
 </html>
