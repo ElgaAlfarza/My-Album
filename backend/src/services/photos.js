@@ -216,24 +216,49 @@ export async function initUpload(member, body) {
 
 async function attachAlbum(photoId, albumId, albumName, fallbackName) {
   let album = null;
+
+  // 1. Cari berdasarkan ID eksplisit
   if (albumId) {
     const found = await adminDb.from("albums").select("id, nama").eq("id", albumId).maybeSingle();
     album = found.data;
   }
+
+  // 2. Cari berdasarkan nama album yang dikirim
   if (!album && albumName) {
     const found = await adminDb.from("albums").select("id, nama").ilike("nama", albumName.trim()).maybeSingle();
     album = found.data;
   }
-  if (!album && fallbackName) {
-    const found = await adminDb.from("albums").select("id, nama").ilike("nama", fallbackName.trim()).maybeSingle();
-    album = found.data;
-  }
-  if (!album && albumName) {
+
+  // 3. Jika nama album custom belum ada → buat album baru sekarang
+  //    Jangan fall back ke defaultAlbum jika albumName berbeda dari fallbackName
+  if (!album && albumName && albumName !== fallbackName) {
     try {
-      const created = await adminDb.from("albums").insert({ nama: albumName.trim() }).select("id, nama").maybeSingle();
+      const created = await adminDb
+        .from("albums")
+        .insert({ nama: albumName.trim() })
+        .select("id, nama")
+        .maybeSingle();
       album = created.data;
     } catch {}
   }
+
+  // 4. Hanya gunakan fallback jika albumName tidak ada atau sama dengan fallback
+  if (!album && fallbackName) {
+    const found = await adminDb.from("albums").select("id, nama").ilike("nama", fallbackName.trim()).maybeSingle();
+    album = found.data;
+    // Buat fallback album jika juga belum ada
+    if (!album) {
+      try {
+        const created = await adminDb
+          .from("albums")
+          .insert({ nama: fallbackName.trim() })
+          .select("id, nama")
+          .maybeSingle();
+        album = created.data;
+      } catch {}
+    }
+  }
+
   if (!album) return;
   await adminDb.from("album_photos").upsert({ album_id: album.id, photo_id: photoId });
 }

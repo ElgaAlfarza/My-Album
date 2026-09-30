@@ -1616,10 +1616,84 @@ function initAdmin() {
       const targetPanel = $(`#${tabId}`);
       if (targetPanel) targetPanel.classList.add("is-active");
 
-      if (tabId === "tab-album") loadAdminAlbums();
+      if (tabId === "tab-album") { loadAdminAlbums(); populateBulkMoveTarget(); }
       if (tabId === "tab-keluarga") loadAdminMembers();
       if (tabId === "tab-sampah") loadAdminTrash();
     });
+  });
+
+  // Populasi dropdown album tujuan untuk bulk-move
+  async function populateBulkMoveTarget() {
+    const sel = $("#bulk-move-target");
+    if (!sel) return;
+    try {
+      const res = await fetch("/api/albums", { headers: { "x-family-pin": getAdminPin() } });
+      if (!res.ok) return;
+      const data = await res.json();
+      const albums = data.items || [];
+      sel.innerHTML = `<option value="">-- Pilih album tujuan --</option>` +
+        albums.map((a) => `<option value="${escapeHtml(a.id)}">${escapeHtml(a.nama || a.name)}</option>`).join("");
+    } catch {}
+  }
+
+  // Handle Pindah Foto Massal
+  $("#bulk-move-form")?.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const keyword = $("#bulk-move-keyword")?.value.trim();
+    const targetAlbumId = $("#bulk-move-target")?.value;
+    const statusEl = $("#bulk-move-status");
+
+    if (!keyword || !targetAlbumId) {
+      toast("Isi kata kunci dan pilih album tujuan.");
+      return;
+    }
+
+    if (statusEl) statusEl.textContent = "Mencari foto...";
+
+    // Muat semua foto dari server
+    const photos = allPhotos().filter((p) =>
+      p.title && p.title.toLowerCase().includes(keyword.toLowerCase())
+    );
+
+    if (photos.length === 0) {
+      if (statusEl) statusEl.textContent = "Tidak ada foto yang cocok.";
+      toast(`Tidak ada foto dengan judul mengandung "${keyword}".`);
+      return;
+    }
+
+    if (!confirm(`Akan memindahkan ${photos.length} foto (judul mengandung "${keyword}") ke album yang dipilih. Lanjutkan?`)) {
+      if (statusEl) statusEl.textContent = "";
+      return;
+    }
+
+    if (statusEl) statusEl.textContent = `Memindahkan 0 / ${photos.length}...`;
+
+    let success = 0;
+    let fail = 0;
+    for (const photo of photos) {
+      try {
+        const res = await fetch(`/api/photos/${photo.id}`, {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+            "x-family-pin": getAdminPin(),
+          },
+          body: JSON.stringify({ album_id: targetAlbumId }),
+        });
+        if (res.ok) { success++; }
+        else { fail++; }
+      } catch { fail++; }
+      if (statusEl) statusEl.textContent = `Memindahkan ${success + fail} / ${photos.length}...`;
+    }
+
+    if (statusEl) statusEl.textContent = `✅ Selesai! ${success} foto dipindah, ${fail} gagal.`;
+    toast(`✅ ${success} foto berhasil dipindah ke album baru.`);
+
+    // Muat ulang foto dari server agar gallery terupdate
+    await loadServerPhotos();
+    renderGallery();
+    renderFilterBar();
+    loadAdminAlbums();
   });
 
   let selectedAvatarFile = null;
