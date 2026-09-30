@@ -2119,3 +2119,108 @@ h1 {
     gap: 0.5rem;
   }
 }
+
+/* ========================================
+   BOTTOM NAVIGATION BAR (MOBILE ONLY)
+   ======================================== */
+.bottom-nav {
+  display: none; /* hidden by default — shown on mobile via media query */
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 64px;
+  background: var(--surface-white);
+  border-top: 1px solid var(--surface-line);
+  z-index: 300;
+  align-items: center;
+  justify-content: space-around;
+  padding: 0 0.25rem;
+  box-shadow: 0 -2px 12px rgba(0,0,0,0.06);
+}
+
+.bottom-nav-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  flex: 1;
+  padding: 0.35rem 0.25rem;
+  color: var(--on-surface-muted);
+  text-decoration: none;
+  font-size: 10px;
+  font-weight: 500;
+  border-radius: var(--radius-sm);
+  transition: color 0.15s;
+  min-width: 0;
+}
+
+.bottom-nav-item .material-symbols-outlined {
+  font-size: 22px;
+  line-height: 1;
+}
+
+.bottom-nav-item span:last-child {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 56px;
+}
+
+.bottom-nav-item.is-active {
+  color: var(--primary);
+}
+
+.bottom-nav-item.is-active .material-symbols-outlined {
+  font-variation-settings: 'FILL' 1;
+}
+
+/* FAB — tombol tambah foto di tengah bottom nav */
+.bottom-fab {
+  width: 56px;
+  height: 56px;
+  border-radius: 999px;
+  background: var(--primary);
+  color: var(--on-primary);
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.25);
+  cursor: pointer;
+  flex-shrink: 0;
+  margin-top: -20px; /* naik di atas bottom nav */
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.bottom-fab:active {
+  transform: scale(0.93);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+}
+
+.bottom-fab .material-symbols-outlined {
+  font-size: 26px;
+}
+
+/* Padding bawah untuk konten agar tidak tertutup bottom nav */
+@media (max-width: 900px) {
+  .bottom-nav {
+    display: flex;
+  }
+
+  main,
+  .page {
+    padding-bottom: calc(64px + 1.5rem) !important;
+  }
+
+  /* Sembunyikan hamburger menu karena sudah ada bottom nav */
+  .menu-toggle {
+    display: none !important;
+  }
+
+  /* Mobile nav dropdown juga bisa disembunyikan — navigasi sudah di bawah */
+  .mobile-nav {
+    display: none !important;
+  }
+}

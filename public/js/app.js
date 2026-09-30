@@ -272,6 +272,10 @@ function setView(view) {
   if (view === "favorit") renderGallery();
   if (view === "album") renderAlbums();
   if (view === "semua") renderGallery();
+  // Sinkronisasi bottom nav (mobile)
+  $$("[data-bottom-nav]").forEach((el) => {
+    el.classList.toggle("is-active", el.dataset.bottomNav === view);
+  });
   if (view === "pohon") renderFamilyTree();
 }
 
@@ -1244,6 +1248,9 @@ function init() {
   initUploadHandlers();
   loadServerPhotos();
   loadServerAlbums();
+
+  // FAB — Tombol tambah foto di bottom nav
+  $("#bottom-fab-upload")?.addEventListener("click", () => openUploadModal());
 }
 
 // --- ADMIN & PENGATURAN LEMARI KENANGAN ---
@@ -1957,16 +1964,43 @@ const TREE_STORAGE_KEY = "family_tree_data";
 function loadFamilyTree() {
   try {
     const stored = localStorage.getItem(TREE_STORAGE_KEY);
-    if (stored) return JSON.parse(stored);
+    if (stored) {
+      const parsed = JSON.parse(stored);
+      if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+    }
   } catch {}
   return [];
+}
+
+// Ambil silsilah terbaru dari server, update localStorage, lalu re-render
+async function syncFamilyTreeFromServer() {
+  try {
+    const res = await fetch("/api/settings/family-tree", {
+      headers: { "x-family-pin": getAdminPin() },
+    });
+    if (!res.ok) return;
+    const data = await res.json();
+    if (data.tree && Array.isArray(data.tree) && data.tree.length > 0) {
+      // Server punya data → update localStorage dan render
+      try {
+        localStorage.setItem(TREE_STORAGE_KEY, JSON.stringify(data.tree));
+      } catch {}
+      renderFamilyTree();
+    } else if (loadFamilyTree().length > 0) {
+      // Server kosong tapi localStorage ada → upload ke server
+      const members = loadFamilyTree();
+      saveFamilyTree(members);
+    }
+  } catch (err) {
+    console.warn("Gagal sinkronisasi silsilah dari server:", err);
+  }
 }
 
 function saveFamilyTree(members) {
   try {
     localStorage.setItem(TREE_STORAGE_KEY, JSON.stringify(members));
   } catch {}
-  // Simpan ke server juga (best-effort)
+  // Simpan ke server (best-effort) — tanpa pin, anyone can update
   fetch("/api/settings/family-tree", {
     method: "POST",
     headers: { "Content-Type": "application/json", "x-family-pin": getAdminPin() },
@@ -2226,8 +2260,9 @@ function initFamilyTree() {
     toast(`"${m.name}" telah dihapus dari silsilah.`);
   });
 
-  // Render awal
+  // Render awal dari localStorage (cepat) lalu sync dari server
   renderFamilyTree();
+  syncFamilyTreeFromServer();
 }
 
 document.addEventListener("DOMContentLoaded", () => {
