@@ -150,7 +150,7 @@ function photoCard(photo) {
       <button class="mount" type="button" data-open="${escapeHtml(photo.id)}" aria-label="Lihat ${title} ukuran penuh">
         <div class="frame">
           <img src="${photo.src}" alt="${title}">
-          
+          <span class="chip ${photo.warm ? "is-warm" : ""}">${escapeHtml(photo.chip || photo.album || "Keluarga")}</span>
           ${dateBadge ? `<span class="year">${escapeHtml(dateBadge)}</span>` : ""}
         </div>
       </button>
@@ -259,18 +259,16 @@ function setView(view) {
       else el.removeAttribute("aria-current");
     }
   });
-  const hero = $(".hero-banner") || $(".hero");
+  const hero = $(".hero");
   const upload = $(".upload-panel");
   if (hero) hero.hidden = view !== "semua";
   if (upload) upload.hidden = view !== "semua";
-  if (view === "pohon") {
-    renderFamilyTree();
-  }
   $("#mobile-nav").classList.remove("is-open");
   if (location.hash !== `#${view}`) history.replaceState(null, "", `#${view}`);
   if (view === "favorit") renderGallery();
   if (view === "album") renderAlbums();
   if (view === "semua") renderGallery();
+  if (view === "pohon") renderFamilyTree();
 }
 
 function fillModal(photo) {
@@ -444,12 +442,13 @@ function populateUploadAlbums() {
   }
 
   const currentVal = select.value || "Foto Keluarga";
-  const options = Array.from(albumNames)
-    .map((name) => `<option value="${escapeHtml(name)}">📁 ${escapeHtml(name)}</option>`)
-    .join("");
-  select.innerHTML = options + `<option value="__new__">➕ Buat Folder / Album Baru...</option>`;
+  // Jangan include __new__ saat mengisi ulang — tambahkan terpisah di akhir
+  select.innerHTML = Array.from(albumNames)
+    .filter((n) => n !== "__new__")
+    .map((name) => `<option value="${escapeHtml(name)}">${escapeHtml(name)}</option>`)
+    .join("") + `<option value="__new__">+ Buat Folder / Album Baru...</option>`;
 
-  if (albumNames.has(currentVal) || currentVal === "__new__") {
+  if (albumNames.has(currentVal) && currentVal !== "__new__") {
     select.value = currentVal;
   }
 }
@@ -644,65 +643,19 @@ async function loadServerAlbums() {
 }
 
 function initUploadHandlers() {
-  // Folder selector: tampilkan kolom nama baru jika opsi Buat Folder dipilih
+  // Tampilkan/sembunyikan input nama album baru saat pilih "Buat Folder Baru"
   const albumSelect = $("#upload-target-album");
-  const newAlbumBox = $("#new-album-input-wrap");
-  const newAlbumInput = $("#new-album-custom-name");
-
-  if (albumSelect) {
+  const newAlbumWrap = $("#new-album-input-wrap");
+  if (albumSelect && newAlbumWrap) {
     albumSelect.addEventListener("change", () => {
       if (albumSelect.value === "__new__") {
-        if (newAlbumBox) newAlbumBox.style.display = "block";
-        setTimeout(() => newAlbumInput?.focus(), 100);
+        newAlbumWrap.style.display = "block";
+        $("#new-album-custom-name")?.focus();
       } else {
-        if (newAlbumBox) newAlbumBox.style.display = "none";
+        newAlbumWrap.style.display = "none";
       }
     });
   }
-
-  // Tombol pintas "+ Folder Baru" di sebelah dropdown
-  $("#inline-new-folder-btn")?.addEventListener("click", () => {
-    if (albumSelect) albumSelect.value = "__new__";
-    if (newAlbumBox) newAlbumBox.style.display = "block";
-    setTimeout(() => newAlbumInput?.focus(), 100);
-  });
-
-  // Tombol buat folder langsung di halaman Album Saya
-  $("#album-create-btn")?.addEventListener("click", () => {
-    const namaFolder = prompt("Masukkan nama folder / album baru untuk kenangan keluarga:");
-    if (!namaFolder || !namaFolder.trim()) return;
-    const cleanName = namaFolder.trim();
-    fetch("/api/albums", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "x-family-pin": getAdminPin(),
-      },
-      body: JSON.stringify({ nama: cleanName }),
-    }).then(async (res) => {
-      const data = await res.json();
-      if (res.ok) {
-        toast(`✅ Folder "${cleanName}" berhasil dibuat!`);
-        await loadServerAlbums();
-        renderAlbums();
-        renderFilterBar();
-      } else {
-        toast(data.message || "Gagal membuat folder album.");
-      }
-    }).catch(() => {
-      toast(`✅ Folder "${cleanName}" siap digunakan!`);
-      state.serverAlbums = state.serverAlbums || [];
-      state.serverAlbums.push({ nama: cleanName });
-      populateUploadAlbums();
-      renderAlbums();
-      renderFilterBar();
-    });
-  });
-
-  // Wire all upload buttons
-  ["add-photo", "pick-photo", "hero-upload-btn", "topbar-upload-btn", "mobile-upload-btn"].forEach((btnId) => {
-    $(`#${btnId}`)?.addEventListener("click", () => $("#foto-input")?.click());
-  });
 
   // Pilihan radio Hari Ini vs Foto Lama
   $("#upload-time-today")?.addEventListener("change", (e) => {
@@ -781,11 +734,20 @@ function initUploadHandlers() {
     const baseTitle = $("#upload-title-input")?.value.trim() || "";
     const caption = $("#upload-caption-input")?.value.trim() || "Kenangan tersimpan di lemari keluarga.";
     const place = $("#upload-place-input")?.value.trim() || "Album Pribadi";
-    let album = $("#upload-target-album")?.value || "Foto Keluarga";
-    if (album === "__new__") {
+    let albumRaw = $("#upload-target-album")?.value || "Foto Keluarga";
+    // Jika pilih "Buat Folder Baru", gunakan nama yang diketik
+    if (albumRaw === "__new__") {
       const customName = $("#new-album-custom-name")?.value.trim();
-      album = customName || "Folder Baru";
+      if (!customName) {
+        toast("Isi nama folder / album baru terlebih dahulu.");
+        if (submitBtn) submitBtn.disabled = false;
+        if (closeBtn) closeBtn.disabled = false;
+        if (cancelBtn) cancelBtn.disabled = false;
+        return;
+      }
+      albumRaw = customName;
     }
+    const album = albumRaw;
     const timeType = $('input[name="upload_time_type"]:checked')?.value || "today";
 
     let takenDate = null;
@@ -815,10 +777,6 @@ function initUploadHandlers() {
       category = "pernikahan";
       chip = "Pernikahan";
       warm = false;
-    } else if (album !== "Foto Keluarga") {
-      category = "custom";
-      chip = album;
-      warm = true;
     }
 
     // Helper untuk upload 1 file dengan XMLHttpRequest
@@ -966,6 +924,13 @@ function initUploadHandlers() {
   });
 }
 
+function updateStats() {
+  const countEl = $("#photo-count");
+  if (countEl) countEl.textContent = `${allPhotos().length} Lembar Foto`;
+  renderFilterBar();
+  populateUploadAlbums();
+}
+
 function renderFilterBar() {
   // Album-album standar (hardcoded)
   const standardAlbumNames = ["Foto Keluarga", "Masa Muda & Pernikahan", "Hari Raya", "Cucu & Liburan"];
@@ -1003,406 +968,10 @@ function renderFilterBar() {
   filterBar.innerHTML = [...standardBtns, ...customBtns].join("");
 }
 
-
-// ==========================================================================
-// POHON SILSILAH KELUARGA (FAMILY TREE) CONTROLLER
-// ==========================================================================
-
-const DEFAULT_FAMILY_TREE = [
-  // Generasi 1: Kakek & Nenek
-  {
-    id: "kakek-1",
-    nama: "Kakek (Ayah dari Ayah)",
-    peran: "Kakek (Tetua)",
-    generasi: 1,
-    gender: "L",
-    pasangan_id: "nenek-1",
-    orangtua_id: null,
-    tahun_lahir: 1950,
-    avatar_url: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=120&q=80",
-    catatan: "Kepala silsilah keluarga besar kita tercinta."
-  },
-  {
-    id: "nenek-1",
-    nama: "Nenek",
-    peran: "Nenek",
-    generasi: 1,
-    gender: "P",
-    pasangan_id: "kakek-1",
-    orangtua_id: null,
-    tahun_lahir: 1954,
-    avatar_url: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=120&q=80",
-    catatan: "Penuh kasih sayang dan teladan bagi seluruh anak cucu."
-  },
-
-  // Generasi 2: 2 Anak Kakek (Ayah & Paman) + Istri Ayah
-  {
-    id: "ayah-1",
-    nama: "Ayah",
-    peran: "Ayah / Kepala Keluarga",
-    generasi: 2,
-    gender: "L",
-    pasangan_id: "ibu-1",
-    orangtua_id: "kakek-1",
-    tahun_lahir: 1976,
-    avatar_url: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=120&q=80",
-    catatan: "Anak pertama Kakek. Memiliki 1 istri dan 3 anak."
-  },
-  {
-    id: "ibu-1",
-    nama: "Ibu",
-    peran: "Ibu",
-    generasi: 2,
-    gender: "P",
-    pasangan_id: "ayah-1",
-    orangtua_id: null,
-    tahun_lahir: 1980,
-    avatar_url: "https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=120&q=80",
-    catatan: "Istri tercinta Ayah, ibu dari 3 orang anak."
-  },
-  {
-    id: "paman-1",
-    nama: "Paman",
-    peran: "Paman (Adik Ayah)",
-    generasi: 2,
-    gender: "L",
-    pasangan_id: null,
-    orangtua_id: "kakek-1",
-    tahun_lahir: 1982,
-    avatar_url: "https://images.unsplash.com/photo-1492562080023-ab3db95bfbce?auto=format&fit=crop&w=120&q=80",
-    catatan: "Anak kedua Kakek (saudara kandung Ayah)."
-  },
-
-  // Generasi 3: 3 Anak dari Ayah & Ibu
-  {
-    id: "anak-1",
-    nama: "Anak Pertama (Sulung)",
-    peran: "Anak ke-1",
-    generasi: 3,
-    gender: "L",
-    pasangan_id: null,
-    orangtua_id: "ayah-1",
-    tahun_lahir: 2002,
-    avatar_url: "https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?auto=format&fit=crop&w=120&q=80",
-    catatan: "Anak pertama dari Ayah dan Ibu."
-  },
-  {
-    id: "anak-2",
-    nama: "Anak Kedua",
-    peran: "Anak ke-2",
-    generasi: 3,
-    gender: "P",
-    pasangan_id: null,
-    orangtua_id: "ayah-1",
-    tahun_lahir: 2006,
-    avatar_url: "https://images.unsplash.com/photo-1517841905240-472988babdf9?auto=format&fit=crop&w=120&q=80",
-    catatan: "Anak kedua dari Ayah dan Ibu."
-  },
-  {
-    id: "anak-3",
-    nama: "Anak Ketiga (Bungsu)",
-    peran: "Anak ke-3",
-    generasi: 3,
-    gender: "L",
-    pasangan_id: null,
-    orangtua_id: "ayah-1",
-    tahun_lahir: 2012,
-    avatar_url: "https://images.unsplash.com/photo-1524504388940-b1c1722653e1?auto=format&fit=crop&w=120&q=80",
-    catatan: "Anak ketiga (bungsu) dari Ayah dan Ibu."
-  }
-];
-
-let familyTreeData = [];
-
-async function loadFamilyTree() {
-  try {
-    const saved = localStorage.getItem("myfamily_tree_data");
-    if (saved) {
-      const parsed = JSON.parse(saved);
-      if (Array.isArray(parsed) && parsed.length > 0) {
-        familyTreeData = parsed;
-      }
-    }
-  } catch {}
-
-  try {
-    const res = await fetch("/api/settings/family-tree", {
-      headers: { "x-family-pin": getAdminPin() }
-    });
-    if (res.ok) {
-      const data = await res.json();
-      if (data.tree && Array.isArray(data.tree) && data.tree.length > 0) {
-        familyTreeData = data.tree;
-        localStorage.setItem("myfamily_tree_data", JSON.stringify(familyTreeData));
-      }
-    }
-  } catch {}
-
-  if (!familyTreeData || familyTreeData.length === 0) {
-    familyTreeData = [...DEFAULT_FAMILY_TREE];
-    localStorage.setItem("myfamily_tree_data", JSON.stringify(familyTreeData));
-  }
-}
-
-async function saveFamilyTree(newData) {
-  familyTreeData = newData;
-  localStorage.setItem("myfamily_tree_data", JSON.stringify(familyTreeData));
-  renderFamilyTree();
-
-  try {
-    await fetch("/api/settings/family-tree", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "x-family-pin": getAdminPin()
-      },
-      body: JSON.stringify({ tree: familyTreeData })
-    });
-  } catch {}
-}
-
-function renderFamilyTree() {
-  const container = $("#family-tree-container");
-  if (!container) return;
-
-  if (!familyTreeData || familyTreeData.length === 0) {
-    familyTreeData = [...DEFAULT_FAMILY_TREE];
-  }
-
-  // Kelompokkan per Generasi
-  const genMap = {
-    1: { title: "Generasi 1 • Kakek & Nenek (Tetua Keluarga)", desc: "Akar leluhur dan pembina pertama keluarga besar kita.", members: [] },
-    2: { title: "Generasi 2 • Orang Tua, Paman & Bibi", desc: "Penerus generasi pertama yang mengasuh dan membimbing anak-anak.", members: [] },
-    3: { title: "Generasi 3 • Anak-Anak & Sepupu", desc: "Generasi muda pembawa harapan dan keceriaan keluarga.", members: [] },
-    4: { title: "Generasi 4 • Cucu-Cucu", desc: "Generasi termuda yang akan meneruskan kisah keluarga.", members: [] }
-  };
-
-  familyTreeData.forEach((m) => {
-    const gen = m.generasi || 3;
-    if (!genMap[gen]) {
-      genMap[gen] = { title: `Generasi ${gen}`, desc: "Garis keturunan keluarga.", members: [] };
-    }
-    genMap[gen].members.push(m);
-  });
-
-  let html = "";
-
-  Object.keys(genMap).sort((a,b) => Number(a) - Number(b)).forEach((genKey) => {
-    const group = genMap[genKey];
-    if (!group.members.length) return;
-
-    html += `
-      <section class="tree-generation-block">
-        <div class="tree-generation-header">
-          <div>
-            <span class="tree-gen-badge">
-              <span class="material-symbols-outlined" style="font-size:16px">family_restroom</span>
-              ${escapeHtml(group.title)}
-            </span>
-            <div class="tree-gen-desc">${escapeHtml(group.desc)} (${group.members.length} Anggota)</div>
-          </div>
-          <button class="btn btn-outline" type="button" onclick="openTreeMemberModal(null, null, null, ${genKey})" style="font-size:12px;padding:0.25rem 0.75rem;border-radius:999px">
-            + Tambah di Generasi Ini
-          </button>
-        </div>
-        <div class="tree-nodes-container">
-    `;
-
-    // Pasangan yang sudah dirender agar tidak duplikat
-    const processedCouples = new Set();
-
-    group.members.forEach((member) => {
-      if (processedCouples.has(member.id)) return;
-
-      const spouse = member.pasangan_id ? familyTreeData.find((x) => x.id === member.pasangan_id) : null;
-
-      if (spouse && spouse.generasi === member.generasi) {
-        processedCouples.add(member.id);
-        processedCouples.add(spouse.id);
-
-        // Cari anak-anak dari pasangan ini
-        const children = familyTreeData.filter((c) => c.orangtua_id === member.id || c.orangtua_id === spouse.id);
-
-        html += `
-          <div class="tree-family-cluster">
-            <div class="tree-cluster-head">
-              <span class="material-symbols-outlined" style="font-size:16px;color:var(--secondary)">favorite</span>
-              <span>Pasangan Suami &amp; Istri ${children.length ? `• ${children.length} Anak` : ""}</span>
-            </div>
-            <div class="tree-couples-row">
-              ${renderMemberCard(member)}
-              <div class="tree-heart-connector" title="Menikah / Pasangan">❤️</div>
-              ${renderMemberCard(spouse)}
-            </div>
-            <div class="tree-quick-add-row">
-              <button class="tree-quick-btn" type="button" onclick="openTreeMemberModal(null, '${member.id}', null, ${Number(genKey) + 1})">
-                <span class="material-symbols-outlined" style="font-size:14px">child_care</span>
-                <span>+ Tambah Anak dari Pasangan Ini</span>
-              </button>
-            </div>
-          </div>
-        `;
-      } else {
-        processedCouples.add(member.id);
-
-        // Anggota individu (misal paman/bibi yang belum menikah, atau anak)
-        const children = familyTreeData.filter((c) => c.orangtua_id === member.id);
-
-        html += `
-          <div class="tree-family-cluster">
-            <div class="tree-couples-row">
-              ${renderMemberCard(member)}
-            </div>
-            <div class="tree-quick-add-row">
-              <button class="tree-quick-btn" type="button" onclick="openTreeMemberModal(null, '${member.id}', null, ${Number(genKey) + 1})">
-                <span class="material-symbols-outlined" style="font-size:14px">child_care</span>
-                <span>+ Tambah Anak</span>
-              </button>
-              <button class="tree-quick-btn" type="button" onclick="openTreeMemberModal(null, null, '${member.id}', ${genKey})">
-                <span class="material-symbols-outlined" style="font-size:14px">favorite</span>
-                <span>+ Pasangan</span>
-              </button>
-            </div>
-          </div>
-        `;
-      }
-    });
-
-    html += `
-        </div>
-      </section>
-    `;
-  });
-
-  container.innerHTML = html;
-}
-
-function renderMemberCard(member) {
-  const isMale = member.gender === "L";
-  const avatar = member.avatar_url || (isMale
-    ? "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=120&q=80"
-    : "https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=120&q=80");
-
-  const parent = member.orangtua_id ? familyTreeData.find((p) => p.id === member.orangtua_id) : null;
-  const parentNote = parent ? `Anak dari ${escapeHtml(parent.nama)}` : "";
-
-  return `
-    <div class="tree-member-card ${isMale ? "is-male" : "is-female"}">
-      <div class="tree-avatar-wrap">
-        <img class="tree-avatar-img" src="${avatar}" alt="${escapeHtml(member.nama)}">
-        <span class="tree-gender-dot">${isMale ? "♂" : "♀"}</span>
-      </div>
-      <div class="tree-member-details">
-        <h4 class="tree-member-name" title="${escapeHtml(member.nama)}">${escapeHtml(member.nama)}</h4>
-        <span class="tree-member-role">${escapeHtml(member.peran || "Keluarga")}</span>
-        ${member.tahun_lahir ? `<span class="tree-member-year">Lahir: ${member.tahun_lahir}</span>` : ""}
-        ${parentNote ? `<span class="tree-member-year" style="color:var(--primary);font-weight:600">${parentNote}</span>` : ""}
-      </div>
-      <div class="tree-member-actions">
-        <button class="tree-action-icon" type="button" title="Ubah data anggota" onclick="openTreeMemberModal('${member.id}')">
-          <span class="material-symbols-outlined" style="font-size:17px">edit</span>
-        </button>
-        <button class="tree-action-icon btn-delete" type="button" title="Hapus dari silsilah" onclick="deleteTreeMember('${member.id}')">
-          <span class="material-symbols-outlined" style="font-size:17px">delete</span>
-        </button>
-      </div>
-    </div>
-  `;
-}
-
-function openTreeMemberModal(memberId = null, parentId = null, spouseId = null, defaultGen = 3) {
-  const modal = $("#tree-member-modal");
-  if (!modal) return;
-
-  const titleEl = $("#tree-modal-title");
-  const editIdInput = $("#tree-edit-id");
-  const namaInput = $("#tree-nama");
-  const peranInput = $("#tree-peran");
-  const genSelect = $("#tree-generasi");
-  const pasanganSelect = $("#tree-pasangan");
-  const orangtuaSelect = $("#tree-orangtua");
-  const genderSelect = $("#tree-gender");
-  const tahunInput = $("#tree-tahun");
-  const avatarInput = $("#tree-avatar-url");
-  const catatanInput = $("#tree-catatan");
-
-  // Isi dropdown pasangan & orang tua
-  const currentMember = memberId ? familyTreeData.find((x) => x.id === memberId) : null;
-
-  pasanganSelect.innerHTML = '<option value="">(Belum / Tidak Ada Pasangan)</option>' +
-    familyTreeData
-      .filter((m) => !currentMember || m.id !== currentMember.id)
-      .map((m) => `<option value="${m.id}">${escapeHtml(m.nama)} (${escapeHtml(m.peran || "Keluarga")})</option>`)
-      .join("");
-
-  orangtuaSelect.innerHTML = '<option value="">(Generasi Tetua / Tanpa Induk)</option>' +
-    familyTreeData
-      .filter((m) => !currentMember || m.id !== currentMember.id)
-      .map((m) => `<option value="${m.id}">${escapeHtml(m.nama)} (${escapeHtml(m.peran || "Keluarga")})</option>`)
-      .join("");
-
-  if (currentMember) {
-    if (titleEl) titleEl.textContent = "Ubah Anggota Silsilah";
-    if (editIdInput) editIdInput.value = currentMember.id;
-    if (namaInput) namaInput.value = currentMember.nama || "";
-    if (peranInput) peranInput.value = currentMember.peran || "";
-    if (genSelect) genSelect.value = String(currentMember.generasi || 3);
-    if (pasanganSelect) pasanganSelect.value = currentMember.pasangan_id || "";
-    if (orangtuaSelect) orangtuaSelect.value = currentMember.orangtua_id || "";
-    if (genderSelect) genderSelect.value = currentMember.gender || "L";
-    if (tahunInput) tahunInput.value = currentMember.tahun_lahir || "";
-    if (avatarInput) avatarInput.value = currentMember.avatar_url || "";
-    if (catatanInput) catatanInput.value = currentMember.catatan || "";
-  } else {
-    if (titleEl) titleEl.textContent = "Tambah Anggota Silsilah";
-    if (editIdInput) editIdInput.value = "";
-    if (namaInput) namaInput.value = "";
-    if (peranInput) peranInput.value = parentId ? "Anak" : (spouseId ? "Istri / Suami" : "");
-    if (genSelect) genSelect.value = String(defaultGen);
-    if (pasanganSelect) pasanganSelect.value = spouseId || "";
-    if (orangtuaSelect) orangtuaSelect.value = parentId || "";
-    if (genderSelect) genderSelect.value = spouseId ? "P" : "L";
-    if (tahunInput) tahunInput.value = "";
-    if (avatarInput) avatarInput.value = "";
-    if (catatanInput) catatanInput.value = "";
-  }
-
-  modal.classList.add("is-open");
-  setTimeout(() => namaInput?.focus(), 100);
-}
-
-function closeTreeMemberModal() {
-  $("#tree-member-modal")?.classList.remove("is-open");
-}
-
-function deleteTreeMember(memberId) {
-  const member = familyTreeData.find((x) => x.id === memberId);
-  if (!member) return;
-
-  if (confirm(`Keluarkan "${member.nama}" dari silsilah keluarga?`)) {
-    const filtered = familyTreeData.filter((x) => x.id !== memberId);
-    // Hapus juga referensi pasangan
-    filtered.forEach((x) => {
-      if (x.pasangan_id === memberId) x.pasangan_id = null;
-      if (x.orangtua_id === memberId) x.orangtua_id = null;
-    });
-    saveFamilyTree(filtered);
-    toast(`Anggota "${member.nama}" berhasil dihapus dari silsilah.`);
-  }
-}
-
 function init() {
-  // Muat foto, album, dan silsilah keluarga secepatnya tanpa hambatan!
-  loadServerPhotos();
-  loadServerAlbums();
-  loadFamilyTree();
-
-  const editAlbumSelect = $("#edit-album");
-  if (editAlbumSelect) {
-    editAlbumSelect.innerHTML = ALBUMS.map(
-      (album) => `<option value="${escapeHtml(album.name)}">${escapeHtml(album.name)}</option>`
-    ).join("");
-  }
+  $("#edit-album").innerHTML = ALBUMS.map(
+    (album) => `<option value="${escapeHtml(album.name)}">${escapeHtml(album.name)}</option>`
+  ).join("");
 
   renderFilterBar();
 
@@ -1457,24 +1026,26 @@ function init() {
     else renderGallery();
   };
 
-  $("#search")?.addEventListener("input", (e) => syncSearch(e.target.value, e.target));
-  $("#search-mobile")?.addEventListener("input", (e) => syncSearch(e.target.value, e.target));
+  $("#search").addEventListener("input", (e) => syncSearch(e.target.value, e.target));
+  $("#search-mobile").addEventListener("input", (e) => syncSearch(e.target.value, e.target));
 
-  $("#mode-large")?.addEventListener("click", () => {
+  $("#mode-large").addEventListener("click", () => {
     state.compact = false;
     applyCompact();
     $("#mode-large").classList.add("is-active");
     $("#mode-compact").classList.remove("is-active");
   });
 
-  $("#mode-compact")?.addEventListener("click", () => {
+  $("#mode-compact").addEventListener("click", () => {
     state.compact = true;
     applyCompact();
     $("#mode-compact").classList.add("is-active");
     $("#mode-large").classList.remove("is-active");
   });
 
-// menu-toggle handled below
+  $("#menu-toggle").addEventListener("click", () => {
+    $("#mobile-nav").classList.toggle("is-open");
+  });
 
   ["add-photo", "pick-photo"].forEach((id) => {
     $(`#${id}`)?.addEventListener("click", () => $("#foto-input")?.click());
@@ -1508,41 +1079,41 @@ function init() {
     });
   }
 
-  $("#close-modal")?.addEventListener("click", closeModal);
-  $("#back-modal")?.addEventListener("click", closeModal);
-  $("#photo-modal")?.addEventListener("click", (e) => {
+  $("#close-modal").addEventListener("click", closeModal);
+  $("#back-modal").addEventListener("click", closeModal);
+  $("#photo-modal").addEventListener("click", (e) => {
     if (e.target.id === "photo-modal" && !$("#confirm-modal").classList.contains("is-open")) closeModal();
   });
-  $("#zoom-more")?.addEventListener("click", () => {
+  $("#zoom-more").addEventListener("click", () => {
     state.zoomed = !state.zoomed;
     $("#modal-img").style.transform = state.zoomed ? "scale(1.35)" : "scale(1)";
     toast(state.zoomed ? "Foto diperbesar untuk kenyamanan mata." : "Ukuran foto dikembalikan.");
   });
-  $("#edit-photo")?.addEventListener("click", () => setEditing(true));
-  $("#cancel-edit")?.addEventListener("click", () => setEditing(false));
-  $("#photo-edit")?.addEventListener("submit", saveEdits);
-  $("#delete-photo")?.addEventListener("click", openConfirm);
-  $("#confirm-no")?.addEventListener("click", closeConfirm);
-  $("#confirm-yes")?.addEventListener("click", () => {
+  $("#edit-photo").addEventListener("click", () => setEditing(true));
+  $("#cancel-edit").addEventListener("click", () => setEditing(false));
+  $("#photo-edit").addEventListener("submit", saveEdits);
+  $("#delete-photo").addEventListener("click", openConfirm);
+  $("#confirm-no").addEventListener("click", closeConfirm);
+  $("#confirm-yes").addEventListener("click", () => {
     closeConfirm();
     removeActivePhoto();
   });
-  $("#confirm-modal")?.addEventListener("click", (e) => {
+  $("#confirm-modal").addEventListener("click", (e) => {
     if (e.target.id === "confirm-modal") closeConfirm();
   });
   const closeGuide = () => $("#guide-modal").classList.remove("is-open");
   const openGuide = () => $("#guide-modal").classList.add("is-open");
 
-  $("#print-photo")?.addEventListener("click", () => {
+  $("#print-photo").addEventListener("click", () => {
     window.print();
   });
-  $("#guide-btn")?.addEventListener("click", openGuide);
-  $("#close-guide")?.addEventListener("click", closeGuide);
-  $("#guide-done")?.addEventListener("click", closeGuide);
-  $("#guide-modal")?.addEventListener("click", (e) => {
+  $("#guide-btn").addEventListener("click", openGuide);
+  $("#close-guide").addEventListener("click", closeGuide);
+  $("#guide-done").addEventListener("click", closeGuide);
+  $("#guide-modal").addEventListener("click", (e) => {
     if (e.target.id === "guide-modal") closeGuide();
   });
-  $("#share-btn")?.addEventListener("click", async () => {
+  $("#share-btn").addEventListener("click", async () => {
     const text = "Koleksi kenangan keluarga dari Album Kenangan Saya.";
     const wa = `https://wa.me/?text=${encodeURIComponent(text)}`;
     if (navigator.share) {
@@ -1558,7 +1129,7 @@ function init() {
 
   const modalShareBtn = $("#modal-share-wa");
   if (modalShareBtn) {
-    modalShareBtn?.addEventListener("click", async () => {
+    modalShareBtn.addEventListener("click", async () => {
       const photo = allPhotos().find((p) => p.id === state.activeId);
       if (!photo) return;
       try {
@@ -1611,127 +1182,6 @@ function init() {
   initUploadHandlers();
   loadServerPhotos();
   loadServerAlbums();
-
-  // Wire Tree Member Modal
-  $("#btn-add-tree-member")?.addEventListener("click", () => openTreeMemberModal());
-  $("#btn-reset-tree-default")?.addEventListener("click", () => {
-    if (confirm("Muat ulang contoh silsilah (Kakek -> Ayah & Ibu -> 3 Anak)?")) {
-      saveFamilyTree([...DEFAULT_FAMILY_TREE]);
-      toast("✅ Contoh silsilah keluarga berhasil dimuat!");
-    }
-  });
-
-  $("#close-tree-modal")?.addEventListener("click", closeTreeMemberModal);
-  $("#cancel-tree-modal")?.addEventListener("click", closeTreeMemberModal);
-  $("#tree-member-modal")?.addEventListener("click", (e) => {
-    if (e.target.id === "tree-member-modal") closeTreeMemberModal();
-  });
-
-  // Avatar file input for tree member
-  $("#tree-avatar-file")?.addEventListener("change", (e) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onload = (evt) => {
-        const urlInput = $("#tree-avatar-url");
-        if (urlInput) urlInput.value = evt.target.result;
-      };
-      reader.readAsDataURL(file);
-    }
-  });
-
-  $("#tree-member-form")?.addEventListener("submit", (e) => {
-    e.preventDefault();
-    const editId = $("#tree-edit-id")?.value.trim();
-    const nama = $("#tree-nama")?.value.trim();
-    if (!nama) return;
-
-    const peran = $("#tree-peran")?.value.trim() || "Keluarga";
-    const generasi = Number($("#tree-generasi")?.value) || 3;
-    const pasangan_id = $("#tree-pasangan")?.value.trim() || null;
-    const orangtua_id = $("#tree-orangtua")?.value.trim() || null;
-    const gender = $("#tree-gender")?.value || "L";
-    const tahun_lahir = Number($("#tree-tahun")?.value) || null;
-    const avatar_url = $("#tree-avatar-url")?.value.trim() || "";
-    const catatan = $("#tree-catatan")?.value.trim() || "";
-
-    if (editId) {
-      // Edit existing
-      const member = familyTreeData.find((x) => x.id === editId);
-      if (member) {
-        member.nama = nama;
-        member.peran = peran;
-        member.generasi = generasi;
-        member.pasangan_id = pasangan_id;
-        member.orangtua_id = orangtua_id;
-        member.gender = gender;
-        member.tahun_lahir = tahun_lahir;
-        if (avatar_url) member.avatar_url = avatar_url;
-        member.catatan = catatan;
-
-        // Hubungkan timbal balik pasangan
-        if (pasangan_id) {
-          const spouse = familyTreeData.find((x) => x.id === pasangan_id);
-          if (spouse) spouse.pasangan_id = editId;
-        }
-      }
-      toast(`✅ Data "${nama}" berhasil diperbarui!`);
-    } else {
-      // Add new member
-      const newId = "tree-" + Date.now();
-      const newMember = {
-        id: newId,
-        nama,
-        peran,
-        generasi,
-        pasangan_id,
-        orangtua_id,
-        gender,
-        tahun_lahir,
-        avatar_url,
-        catatan
-      };
-      familyTreeData.push(newMember);
-
-      // Hubungkan timbal balik pasangan
-      if (pasangan_id) {
-        const spouse = familyTreeData.find((x) => x.id === pasangan_id);
-        if (spouse) spouse.pasangan_id = newId;
-      }
-
-      toast(`✅ "${nama}" berhasil ditambahkan ke silsilah!`);
-    }
-
-    saveFamilyTree([...familyTreeData]);
-    closeTreeMemberModal();
-  });
-
-  // Mobile Hamburger Drawer Toggle (Mobile HP)
-  const menuBtn = $("#menu-toggle");
-  const sidebar = $(".sidebar");
-  const overlay = $("#sidebar-overlay");
-  const closeSidebarBtn = $("#sidebar-close-btn");
-
-  const toggleSidebar = (e) => {
-    if (e) e.stopPropagation();
-    sidebar?.classList.toggle("is-open");
-    overlay?.classList.toggle("is-open");
-  };
-
-  const closeSidebar = () => {
-    sidebar?.classList.remove("is-open");
-    overlay?.classList.remove("is-open");
-  };
-
-  menuBtn?.addEventListener("click", toggleSidebar);
-  overlay?.addEventListener("click", closeSidebar);
-  closeSidebarBtn?.addEventListener("click", closeSidebar);
-
-  $(".sidebar a, .sidebar button").forEach((el) => {
-    el.addEventListener("click", () => {
-      if (window.innerWidth <= 768) closeSidebar();
-    });
-  });
 }
 
 // --- ADMIN & PENGATURAN LEMARI KENANGAN ---
@@ -2037,33 +1487,17 @@ function initAdmin() {
     $("#admin-modal")?.classList.remove("is-open");
   };
 
-  function handleOpenAdmin(targetTab = "tab-tampilan") {
-    setAdminLoggedIn(true);
-    openAdminModal();
-    if (typeof targetTab === "string") {
-      const tabBtn = $(`[data-tab="${targetTab}"]`);
-      if (tabBtn) tabBtn.click();
+  function handleOpenAdmin() {
+    if (isAdminLoggedIn()) {
+      openAdminModal();
+    } else {
+      openPinModal();
     }
   }
 
-  $("#open-admin-btn")?.addEventListener("click", () => handleOpenAdmin("tab-tampilan"));
-  $("#nav-admin-btn")?.addEventListener("click", () => handleOpenAdmin("tab-tampilan"));
-  $("#mobile-admin-btn")?.addEventListener("click", () => handleOpenAdmin("tab-tampilan"));
-  $("#sidebar-settings-btn")?.addEventListener("click", () => handleOpenAdmin("tab-tampilan"));
-  $("#mobile-settings-btn")?.addEventListener("click", () => handleOpenAdmin("tab-tampilan"));
-  $("#sidebar-members-btn")?.addEventListener("click", () => handleOpenAdmin("tab-keluarga"));
-  $("#open-tree-btn")?.addEventListener("click", () => handleOpenAdmin("tab-keluarga"));
-  $("#sidebar-tree-btn")?.addEventListener("click", () => handleOpenAdmin("tab-keluarga"));
-
-  // Mobile drawer toggle
-  $("#menu-toggle")?.addEventListener("click", () => {
-    $(".sidebar")?.classList.toggle("is-open");
-    $("#sidebar-overlay")?.classList.toggle("is-open");
-  });
-  $("#sidebar-overlay")?.addEventListener("click", () => {
-    $(".sidebar")?.classList.remove("is-open");
-    $("#sidebar-overlay")?.classList.remove("is-open");
-  });
+  $("#open-admin-btn")?.addEventListener("click", handleOpenAdmin);
+  $("#nav-admin-btn")?.addEventListener("click", handleOpenAdmin);
+  $("#mobile-admin-btn")?.addEventListener("click", handleOpenAdmin);
 
   $("#close-pin-modal")?.addEventListener("click", closePinModal);
   $("#pin-cancel-btn")?.addEventListener("click", closePinModal);
@@ -2378,4 +1812,289 @@ function initAdmin() {
   });
 }
 
-document.addEventListener("DOMContentLoaded", init);
+// ===========================
+// POHON SILSILAH KELUARGA
+// ===========================
+
+const TREE_STORAGE_KEY = "family_tree_data";
+
+function loadFamilyTree() {
+  try {
+    const stored = localStorage.getItem(TREE_STORAGE_KEY);
+    if (stored) return JSON.parse(stored);
+  } catch {}
+  return [];
+}
+
+function saveFamilyTree(members) {
+  try {
+    localStorage.setItem(TREE_STORAGE_KEY, JSON.stringify(members));
+  } catch {}
+  // Simpan ke server juga (best-effort)
+  fetch("/api/settings/family-tree", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "x-family-pin": getAdminPin() },
+    body: JSON.stringify({ tree: members }),
+  }).catch(() => {});
+}
+
+// Ambil semua turunan dari seorang anggota (recursive)
+function getDescendants(members, parentId) {
+  const children = members.filter((m) => m.parent_id === parentId);
+  return children.reduce((acc, child) => {
+    return [...acc, child, ...getDescendants(members, child.id)];
+  }, []);
+}
+
+function renderFamilyTree() {
+  const container = $("#family-tree-render");
+  if (!container) return;
+
+  const members = loadFamilyTree();
+
+  if (members.length === 0) {
+    container.innerHTML = `
+      <div class="empty" style="text-align:center;padding:3rem 1rem">
+        <span class="material-symbols-outlined" style="font-size:64px;color:var(--on-surface-muted);display:block;margin-bottom:1rem">family_restroom</span>
+        <h3 style="margin:0 0 0.5rem">Belum Ada Anggota Keluarga</h3>
+        <p style="color:var(--on-surface-muted)">Tekan tombol "Tambah Anggota" di atas untuk mulai membangun pohon silsilah keluarga Anda.</p>
+      </div>`;
+    return;
+  }
+
+  // Susun berdasarkan generasi (BFS dari akar)
+  const roots = members.filter((m) => !m.parent_id);
+  const rendered = new Set();
+  let html = '<div class="tree-wrap">';
+
+  function renderGroup(groupMembers, depth) {
+    if (!groupMembers.length) return "";
+    let out = `<div class="tree-row" style="--depth:${depth}">`;
+    for (const m of groupMembers) {
+      if (rendered.has(m.id)) continue;
+      rendered.add(m.id);
+
+      // Pasangan
+      const spouse = m.spouse_id ? members.find((x) => x.id === m.spouse_id) : null;
+      const lifespan = [m.born_year, m.died_year ? `† ${m.died_year}` : ""].filter(Boolean).join(" – ");
+
+      out += `
+        <div class="tree-node">
+          <div class="tree-couple">
+            <!-- Kartu anggota utama -->
+            <div class="tree-card" data-tree-id="${escapeHtml(m.id)}">
+              <div class="tree-avatar">${escapeHtml(m.name[0] || "?").toUpperCase()}</div>
+              <div class="tree-info">
+                <strong>${escapeHtml(m.name)}</strong>
+                ${m.role ? `<span class="tree-role">${escapeHtml(m.role)}</span>` : ""}
+                ${lifespan ? `<span class="tree-lifespan">${escapeHtml(lifespan)}</span>` : ""}
+              </div>
+              <div class="tree-actions">
+                <button class="btn btn-soft tree-edit-btn" type="button" data-tree-edit="${escapeHtml(m.id)}" title="Edit">
+                  <span class="material-symbols-outlined" style="font-size:16px">edit</span>
+                </button>
+                <button class="btn btn-outline tree-add-child-btn" type="button" data-tree-add-child="${escapeHtml(m.id)}" title="Tambah anak">
+                  <span class="material-symbols-outlined" style="font-size:16px">person_add</span>
+                </button>
+              </div>
+            </div>
+            ${spouse && !rendered.has(spouse.id) ? (() => {
+              rendered.add(spouse.id);
+              const spouseLifespan = [spouse.born_year, spouse.died_year ? `† ${spouse.died_year}` : ""].filter(Boolean).join(" – ");
+              return `
+                <div class="tree-spouse-line">❤</div>
+                <div class="tree-card tree-card-spouse" data-tree-id="${escapeHtml(spouse.id)}">
+                  <div class="tree-avatar tree-avatar-spouse">${escapeHtml(spouse.name[0] || "?").toUpperCase()}</div>
+                  <div class="tree-info">
+                    <strong>${escapeHtml(spouse.name)}</strong>
+                    ${spouse.role ? `<span class="tree-role">${escapeHtml(spouse.role)}</span>` : ""}
+                    ${spouseLifespan ? `<span class="tree-lifespan">${escapeHtml(spouseLifespan)}</span>` : ""}
+                  </div>
+                  <div class="tree-actions">
+                    <button class="btn btn-soft tree-edit-btn" type="button" data-tree-edit="${escapeHtml(spouse.id)}" title="Edit">
+                      <span class="material-symbols-outlined" style="font-size:16px">edit</span>
+                    </button>
+                  </div>
+                </div>`;
+            })() : ""}
+          </div>
+          ${(() => {
+            const children = members.filter((c) => c.parent_id === m.id || c.parent_id === (spouse?.id || ""));
+            if (!children.length) return "";
+            return `<div class="tree-children">${renderGroup(children, depth + 1)}</div>`;
+          })()}
+        </div>`;
+    }
+    out += "</div>";
+    return out;
+  }
+
+  html += renderGroup(roots, 0);
+  html += "</div>";
+  container.innerHTML = html;
+
+  // Wire up event listeners untuk edit dan tambah anak
+  container.querySelectorAll("[data-tree-edit]").forEach((btn) => {
+    btn.addEventListener("click", () => openTreeModal(btn.dataset.treeEdit));
+  });
+  container.querySelectorAll("[data-tree-add-child]").forEach((btn) => {
+    btn.addEventListener("click", () => openTreeModal(null, btn.dataset.treeAddChild));
+  });
+}
+
+function populateTreeSelects(members, excludeId) {
+  const parentSel = $("#tree-member-parent");
+  const spouseSel = $("#tree-member-spouse");
+  if (!parentSel || !spouseSel) return;
+
+  const opts = members
+    .filter((m) => m.id !== excludeId)
+    .map((m) => `<option value="${escapeHtml(m.id)}">${escapeHtml(m.name)}${m.role ? " (" + escapeHtml(m.role) + ")" : ""}</option>`)
+    .join("");
+
+  parentSel.innerHTML = `<option value="">— Tidak ada / Akar silsilah —</option>${opts}`;
+  spouseSel.innerHTML = `<option value="">— Tidak ada / Belum menikah —</option>${opts}`;
+}
+
+function openTreeModal(editId, defaultParentId) {
+  const members = loadFamilyTree();
+  populateTreeSelects(members, editId);
+
+  const modal = $("#tree-member-modal");
+  const title = $("#tree-modal-title");
+  const deleteBtn = $("#tree-member-delete");
+  const idField = $("#tree-member-id");
+  const nameField = $("#tree-member-name");
+  const roleField = $("#tree-member-role");
+  const bornField = $("#tree-member-born");
+  const diedField = $("#tree-member-died");
+  const parentSel = $("#tree-member-parent");
+  const spouseSel = $("#tree-member-spouse");
+
+  if (editId) {
+    const m = members.find((x) => x.id === editId);
+    if (!m) return;
+    title.textContent = "Edit Anggota Keluarga";
+    idField.value = m.id;
+    nameField.value = m.name || "";
+    roleField.value = m.role || "";
+    bornField.value = m.born_year || "";
+    diedField.value = m.died_year || "";
+    parentSel.value = m.parent_id || "";
+    spouseSel.value = m.spouse_id || "";
+    deleteBtn.style.display = "inline-flex";
+  } else {
+    title.textContent = "Tambah Anggota Keluarga";
+    idField.value = "";
+    nameField.value = "";
+    roleField.value = "";
+    bornField.value = "";
+    diedField.value = "";
+    parentSel.value = defaultParentId || "";
+    spouseSel.value = "";
+    deleteBtn.style.display = "none";
+  }
+
+  modal.classList.add("is-open");
+  nameField.focus();
+}
+
+function closeTreeModal() {
+  $("#tree-member-modal")?.classList.remove("is-open");
+}
+
+function initFamilyTree() {
+  // Tambah anggota dari toolbar
+  $("#btn-add-root-member")?.addEventListener("click", () => openTreeModal(null, null));
+
+  // Close modal
+  $("#close-tree-modal")?.addEventListener("click", closeTreeModal);
+  $("#tree-member-cancel")?.addEventListener("click", closeTreeModal);
+  $("#tree-member-modal")?.addEventListener("click", (e) => {
+    if (e.target.id === "tree-member-modal") closeTreeModal();
+  });
+
+  // Simpan anggota (tambah/edit)
+  $("#tree-member-form")?.addEventListener("submit", (e) => {
+    e.preventDefault();
+    const members = loadFamilyTree();
+    const id = $("#tree-member-id")?.value.trim();
+    const name = $("#tree-member-name")?.value.trim();
+    const role = $("#tree-member-role")?.value.trim();
+    const bornYear = Number($("#tree-member-born")?.value) || null;
+    const diedYear = Number($("#tree-member-died")?.value) || null;
+    const parentId = $("#tree-member-parent")?.value || null;
+    const spouseId = $("#tree-member-spouse")?.value || null;
+
+    if (!name) {
+      toast("Nama anggota harus diisi.");
+      return;
+    }
+
+    if (id) {
+      // Edit
+      const idx = members.findIndex((m) => m.id === id);
+      if (idx >= 0) {
+        members[idx] = { ...members[idx], name, role, born_year: bornYear, died_year: diedYear, parent_id: parentId, spouse_id: spouseId };
+        // Sinkronkan pasangan (mutual)
+        if (spouseId) {
+          const spouseIdx = members.findIndex((m) => m.id === spouseId);
+          if (spouseIdx >= 0 && !members[spouseIdx].spouse_id) {
+            members[spouseIdx] = { ...members[spouseIdx], spouse_id: id };
+          }
+        }
+      }
+      toast(`✅ "${name}" berhasil diperbarui.`);
+    } else {
+      // Tambah baru
+      const newId = `tree-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
+      const newMember = { id: newId, name, role, born_year: bornYear, died_year: diedYear, parent_id: parentId, spouse_id: spouseId };
+      members.push(newMember);
+      // Sinkronkan pasangan (mutual)
+      if (spouseId) {
+        const spouseIdx = members.findIndex((m) => m.id === spouseId);
+        if (spouseIdx >= 0 && !members[spouseIdx].spouse_id) {
+          members[spouseIdx] = { ...members[spouseIdx], spouse_id: newId };
+        }
+      }
+      toast(`✅ "${name}" berhasil ditambahkan ke silsilah keluarga.`);
+    }
+
+    saveFamilyTree(members);
+    closeTreeModal();
+    renderFamilyTree();
+  });
+
+  // Hapus anggota
+  $("#tree-member-delete")?.addEventListener("click", () => {
+    const id = $("#tree-member-id")?.value.trim();
+    if (!id) return;
+    const members = loadFamilyTree();
+    const m = members.find((x) => x.id === id);
+    if (!m) return;
+
+    if (!confirm(`Hapus "${m.name}" dari silsilah keluarga?\nAnak-anaknya akan menjadi akar tersendiri.`)) return;
+
+    // Hapus referensi ke anggota ini dari members lain
+    const updated = members
+      .filter((x) => x.id !== id)
+      .map((x) => ({
+        ...x,
+        parent_id: x.parent_id === id ? null : x.parent_id,
+        spouse_id: x.spouse_id === id ? null : x.spouse_id,
+      }));
+
+    saveFamilyTree(updated);
+    closeTreeModal();
+    renderFamilyTree();
+    toast(`"${m.name}" telah dihapus dari silsilah.`);
+  });
+
+  // Render awal
+  renderFamilyTree();
+}
+
+document.addEventListener("DOMContentLoaded", () => {
+  init();
+  initFamilyTree();
+});
