@@ -1001,9 +1001,16 @@ function renderFilterBar() {
 }
 
 function init() {
-  $("#edit-album").innerHTML = ALBUMS.map(
-    (album) => `<option value="${escapeHtml(album.name)}">${escapeHtml(album.name)}</option>`
-  ).join("");
+  // Muat foto dan album dari server secepatnya tanpa hambatan!
+  loadServerPhotos();
+  loadServerAlbums();
+
+  const editAlbumSelect = $("#edit-album");
+  if (editAlbumSelect) {
+    editAlbumSelect.innerHTML = ALBUMS.map(
+      (album) => `<option value="${escapeHtml(album.name)}">${escapeHtml(album.name)}</option>`
+    ).join("");
+  }
 
   renderFilterBar();
 
@@ -1058,24 +1065,24 @@ function init() {
     else renderGallery();
   };
 
-  $("#search").addEventListener("input", (e) => syncSearch(e.target.value, e.target));
-  $("#search-mobile").addEventListener("input", (e) => syncSearch(e.target.value, e.target));
+  $("#search")?.addEventListener("input", (e) => syncSearch(e.target.value, e.target));
+  $("#search-mobile")?.addEventListener("input", (e) => syncSearch(e.target.value, e.target));
 
-  $("#mode-large").addEventListener("click", () => {
+  $("#mode-large")?.addEventListener("click", () => {
     state.compact = false;
     applyCompact();
     $("#mode-large").classList.add("is-active");
     $("#mode-compact").classList.remove("is-active");
   });
 
-  $("#mode-compact").addEventListener("click", () => {
+  $("#mode-compact")?.addEventListener("click", () => {
     state.compact = true;
     applyCompact();
     $("#mode-compact").classList.add("is-active");
     $("#mode-large").classList.remove("is-active");
   });
 
-  $("#menu-toggle").addEventListener("click", () => {
+  $("#menu-toggle")?.addEventListener("click", () => {
     $("#mobile-nav").classList.toggle("is-open");
   });
 
@@ -1111,41 +1118,41 @@ function init() {
     });
   }
 
-  $("#close-modal").addEventListener("click", closeModal);
-  $("#back-modal").addEventListener("click", closeModal);
-  $("#photo-modal").addEventListener("click", (e) => {
+  $("#close-modal")?.addEventListener("click", closeModal);
+  $("#back-modal")?.addEventListener("click", closeModal);
+  $("#photo-modal")?.addEventListener("click", (e) => {
     if (e.target.id === "photo-modal" && !$("#confirm-modal").classList.contains("is-open")) closeModal();
   });
-  $("#zoom-more").addEventListener("click", () => {
+  $("#zoom-more")?.addEventListener("click", () => {
     state.zoomed = !state.zoomed;
     $("#modal-img").style.transform = state.zoomed ? "scale(1.35)" : "scale(1)";
     toast(state.zoomed ? "Foto diperbesar untuk kenyamanan mata." : "Ukuran foto dikembalikan.");
   });
-  $("#edit-photo").addEventListener("click", () => setEditing(true));
-  $("#cancel-edit").addEventListener("click", () => setEditing(false));
-  $("#photo-edit").addEventListener("submit", saveEdits);
-  $("#delete-photo").addEventListener("click", openConfirm);
-  $("#confirm-no").addEventListener("click", closeConfirm);
-  $("#confirm-yes").addEventListener("click", () => {
+  $("#edit-photo")?.addEventListener("click", () => setEditing(true));
+  $("#cancel-edit")?.addEventListener("click", () => setEditing(false));
+  $("#photo-edit")?.addEventListener("submit", saveEdits);
+  $("#delete-photo")?.addEventListener("click", openConfirm);
+  $("#confirm-no")?.addEventListener("click", closeConfirm);
+  $("#confirm-yes")?.addEventListener("click", () => {
     closeConfirm();
     removeActivePhoto();
   });
-  $("#confirm-modal").addEventListener("click", (e) => {
+  $("#confirm-modal")?.addEventListener("click", (e) => {
     if (e.target.id === "confirm-modal") closeConfirm();
   });
   const closeGuide = () => $("#guide-modal").classList.remove("is-open");
   const openGuide = () => $("#guide-modal").classList.add("is-open");
 
-  $("#print-photo").addEventListener("click", () => {
+  $("#print-photo")?.addEventListener("click", () => {
     window.print();
   });
-  $("#guide-btn").addEventListener("click", openGuide);
-  $("#close-guide").addEventListener("click", closeGuide);
-  $("#guide-done").addEventListener("click", closeGuide);
-  $("#guide-modal").addEventListener("click", (e) => {
+  $("#guide-btn")?.addEventListener("click", openGuide);
+  $("#close-guide")?.addEventListener("click", closeGuide);
+  $("#guide-done")?.addEventListener("click", closeGuide);
+  $("#guide-modal")?.addEventListener("click", (e) => {
     if (e.target.id === "guide-modal") closeGuide();
   });
-  $("#share-btn").addEventListener("click", async () => {
+  $("#share-btn")?.addEventListener("click", async () => {
     const text = "Koleksi kenangan keluarga dari Album Kenangan Saya.";
     const wa = `https://wa.me/?text=${encodeURIComponent(text)}`;
     if (navigator.share) {
@@ -1161,7 +1168,7 @@ function init() {
 
   const modalShareBtn = $("#modal-share-wa");
   if (modalShareBtn) {
-    modalShareBtn.addEventListener("click", async () => {
+    modalShareBtn?.addEventListener("click", async () => {
       const photo = allPhotos().find((p) => p.id === state.activeId);
       if (!photo) return;
       try {
