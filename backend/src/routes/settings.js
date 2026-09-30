@@ -137,3 +137,63 @@ const handleSaveSettings = async (req, res, next) => {
 
 settingsRouter.put("/", requireFamily, requireAdmin, handleSaveSettings);
 settingsRouter.post("/", requireFamily, requireAdmin, handleSaveSettings);
+
+// In-memory fallback untuk pohon keluarga
+let currentFamilyTree = null;
+
+/**
+ * GET /api/settings/family-tree
+ * Membaca bagan silsilah pohon keluarga
+ */
+settingsRouter.get("/family-tree", async (req, res) => {
+  try {
+    if (isSupabaseConfigured()) {
+      try {
+        const { data: member } = await adminDb
+          .from("family_members")
+          .select("email")
+          .eq("role", "admin")
+          .limit(1)
+          .maybeSingle();
+        if (member && member.email && member.email.startsWith("[")) {
+          const tree = JSON.parse(member.email);
+          if (Array.isArray(tree) && tree.length > 0) {
+            return res.json({ tree });
+          }
+        }
+      } catch (err) {
+        console.warn("Gagal membaca silsilah keluarga dari db:", err.message);
+      }
+    }
+    res.json({ tree: currentFamilyTree || [] });
+  } catch {
+    res.json({ tree: currentFamilyTree || [] });
+  }
+});
+
+/**
+ * POST /api/settings/family-tree
+ * Menyimpan bagan silsilah pohon keluarga ke cloud
+ */
+settingsRouter.post("/family-tree", async (req, res) => {
+  try {
+    const { tree } = req.body;
+    if (Array.isArray(tree)) {
+      currentFamilyTree = tree;
+      if (isSupabaseConfigured()) {
+        try {
+          await adminDb
+            .from("family_members")
+            .update({ email: JSON.stringify(tree) })
+            .eq("role", "admin");
+        } catch (err) {
+          console.warn("Gagal menyimpan silsilah ke db:", err.message);
+        }
+      }
+    }
+    res.json({ ok: true, tree: currentFamilyTree || [] });
+  } catch (err) {
+    res.status(500).json({ ok: false, message: err.message });
+  }
+});
+
