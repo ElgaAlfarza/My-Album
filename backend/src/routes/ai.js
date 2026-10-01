@@ -108,9 +108,33 @@ aiRouter.post("/set-key", async (req, res) => {
  * Analisis foto dengan Gemini Vision → judul + deskripsi + saran album
  * Body: { image_base64: string, mime_type: string }
  */
+/**
+ * GET /api/ai/test
+ * Tes koneksi Gemini API dengan teks saja (tanpa gambar) untuk diagnosa
+ */
+aiRouter.get("/test", async (req, res) => {
+  const apiKey = await loadApiKeyFromDb();
+  if (!apiKey) return res.json({ ok: false, message: "Key belum dipasang." });
+
+  try {
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
+    const r = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ contents: [{ parts: [{ text: "Halo, balas dengan: OK" }] }] }),
+    });
+    const body = await r.json();
+    if (r.ok) {
+      return res.json({ ok: true, message: "Gemini OK", reply: body?.candidates?.[0]?.content?.parts?.[0]?.text });
+    }
+    return res.json({ ok: false, status: r.status, gemini_error: body });
+  } catch (err) {
+    return res.json({ ok: false, message: err.message });
+  }
+});
+
 aiRouter.post("/describe", async (req, res, next) => {
   try {
-    // Load key dari DB jika memory kosong (handle Vercel cold start)
     const apiKey = await loadApiKeyFromDb();
 
     if (!apiKey) {
@@ -154,26 +178,25 @@ Pilih album berdasarkan isi foto:
             { text: prompt },
           ],
         }],
-        generationConfig: {
-          temperature: 0.4,
-          maxOutputTokens: 300,
-        },
+        generationConfig: { temperature: 0.4, maxOutputTokens: 300 },
       }),
     });
 
     if (!response.ok) {
-      const errBody = await response.text();
-      console.error("Gemini API error:", response.status, errBody);
+      const errBody = await response.json().catch(() => ({}));
+      const geminiMsg = errBody?.error?.message || "Unknown error";
+      console.error("Gemini API error:", response.status, geminiMsg);
+
       if (response.status === 400) {
-        return res.status(400).json({ ok: false, message: "Format gambar tidak didukung AI." });
+        return res.status(400).json({ ok: false, message: `Gemini: ${geminiMsg}` });
       }
       if (response.status === 403 || response.status === 401) {
-        return res.status(503).json({ ok: false, message: "API key tidak valid atau expired. Paste key baru di Admin → Pengaturan." });
+        return res.status(503).json({ ok: false, message: `API key tidak valid: ${geminiMsg}` });
       }
       if (response.status === 429) {
         return res.status(429).json({ ok: false, message: "Batas kuota AI tercapai. Coba lagi nanti." });
       }
-      return res.status(502).json({ ok: false, message: "Gagal menghubungi AI." });
+      return res.status(502).json({ ok: false, message: `Gemini error ${response.status}: ${geminiMsg}` });
     }
 
     const geminiData = await response.json();

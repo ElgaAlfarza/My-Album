@@ -1297,7 +1297,12 @@ async function analyzePhotoWithAI(file) {
           body: JSON.stringify({ image_base64: base64, mime_type: mimeType }),
         });
         const data = await res.json();
-        resolve(data.ok ? data : null);
+        if (data.ok) {
+          resolve(data);
+        } else {
+          // Kembalikan objek error dengan pesan asli dari server
+          resolve({ ok: false, error: data.message || "Gagal menganalisis foto." });
+        }
       } catch { resolve(null); }
     };
     reader.readAsDataURL(file);
@@ -1416,9 +1421,13 @@ async function runAiOnSelectedFiles(files) {
   const result = await analyzePhotoWithAI(file);
   if (spinner) spinner.style.display = "none";
 
-  if (!result) {
+  if (!result || result.ok === false) {
+    const errMsg = result?.error || "Gagal menganalisis foto. Cek koneksi atau kuota AI Anda.";
     if (resultContent) {
-      resultContent.innerHTML = `<span style="color:#dc2626">❌ Gagal menganalisis foto. Cek koneksi atau kuota AI Anda.</span>`;
+      resultContent.innerHTML = `<span style="color:#dc2626">❌ ${escapeHtml(errMsg)}</span>
+        <br><small style="color:#6b7280;margin-top:4px;display:block">
+          Coba cek key di: <a href="https://my-album-xi.vercel.app/api/ai/test" target="_blank" style="color:var(--primary)">Test koneksi AI</a>
+        </small>`;
     }
     return;
   }
