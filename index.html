@@ -134,7 +134,15 @@
 
       <div data-view="semua">
         <section class="toolbar">
-          <div class="filters" id="filter-bar"></div>
+          <div class="filters-container">
+            <button class="filter-scroll-btn filter-scroll-prev is-hidden" id="filter-scroll-prev" type="button" aria-label="Geser pilihan ke kiri">
+              <span class="material-symbols-outlined">chevron_left</span>
+            </button>
+            <div class="filters" id="filter-bar"></div>
+            <button class="filter-scroll-btn filter-scroll-next is-hidden" id="filter-scroll-next" type="button" aria-label="Geser pilihan ke kanan">
+              <span class="material-symbols-outlined">chevron_right</span>
+            </button>
+          </div>
           <div class="view-switch">
             <button class="is-active" id="mode-large" type="button">
               <span class="material-symbols-outlined">aspect_ratio</span>

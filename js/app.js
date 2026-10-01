@@ -1,11 +1,11 @@
 const PHOTOS = [];
 
 const FILTERS = [
-  { id: "semua", label: "Semua" },
-  { id: "keluarga", label: "Foto Keluarga" },
-  { id: "pernikahan", label: "Masa Muda & Pernikahan" },
-  { id: "hari-raya", label: "Hari Raya" },
-  { id: "liburan", label: "Cucu & Liburan" },
+  { id: "semua", label: "Semua", icon: "photo_library" },
+  { id: "keluarga", label: "Foto Keluarga", icon: "diversity_3" },
+  { id: "pernikahan", label: "Masa Muda & Pernikahan", icon: "favorite" },
+  { id: "hari-raya", label: "Hari Raya", icon: "celebration" },
+  { id: "liburan", label: "Cucu & Liburan", icon: "beach_access" },
 ];
 
 const STORAGE_KEY = "album-kenangan-saya";
@@ -1044,21 +1044,85 @@ function renderFilterBar() {
   const filterBar = $("#filter-bar");
   if (!filterBar) return;
 
-  // Render tombol filter standar
+  // Render tombol filter standar dengan ikon rapi
   const standardBtns = FILTERS.map((f, i) => {
     const isActive = state.filter === f.id || (i === 0 && !state.filter);
-    return `<button class="filter-btn ${isActive ? "is-active" : ""}" type="button" data-filter="${f.id}" ${f.id === "semua" ? 'id="filter-all"' : ""}>${f.id === "semua" ? `${icon("filter_vintage")} Semua (${allPhotos().length} Foto)` : f.label}</button>`;
+    const countBadge = f.id === "semua" ? `<span class="filter-count">(${allPhotos().length})</span>` : "";
+    return `<button class="filter-btn ${isActive ? "is-active" : ""}" type="button" data-filter="${f.id}" ${f.id === "semua" ? 'id="filter-all"' : ""} title="${f.label}">
+      <span class="material-symbols-outlined filter-icon">${f.icon}</span>
+      <span class="filter-text">${f.label}</span>
+      ${countBadge}
+    </button>`;
   });
 
-  // Render tombol filter album custom
+  // Render tombol filter album custom dengan ikon folder
   const customBtns = [...customAlbumNames].map((name) => {
     const filterId = `album:${name}`;
     const isActive = state.filter === filterId;
-    return `<button class="filter-btn ${isActive ? "is-active" : ""}" type="button" data-filter="${filterId}" data-custom-album="1">${escapeHtml(name)}</button>`;
+    return `<button class="filter-btn ${isActive ? "is-active" : ""}" type="button" data-filter="${filterId}" data-custom-album="1" title="${escapeHtml(name)}">
+      <span class="material-symbols-outlined filter-icon">folder_open</span>
+      <span class="filter-text">${escapeHtml(name)}</span>
+    </button>`;
   });
 
   filterBar.innerHTML = [...standardBtns, ...customBtns].join("");
+
+  // Update panah navigasi scroll
+  if (typeof updateFilterArrows === "function") {
+    setTimeout(updateFilterArrows, 50);
+  }
 }
+
+function updateFilterArrows() {
+  const filterBar = $("#filter-bar");
+  const prevBtn = $("#filter-scroll-prev");
+  const nextBtn = $("#filter-scroll-next");
+  if (!filterBar || !prevBtn || !nextBtn) return;
+
+  const { scrollLeft, scrollWidth, clientWidth } = filterBar;
+  const canScroll = scrollWidth > clientWidth + 4;
+
+  if (!canScroll) {
+    prevBtn.classList.add("is-hidden");
+    nextBtn.classList.add("is-hidden");
+    return;
+  }
+
+  const atStart = scrollLeft <= 6;
+  const atEnd = scrollLeft + clientWidth >= scrollWidth - 6;
+
+  prevBtn.classList.toggle("is-hidden", atStart);
+  nextBtn.classList.toggle("is-hidden", atEnd);
+}
+
+function initFilterBarScroll() {
+  const filterBar = $("#filter-bar");
+  const prevBtn = $("#filter-scroll-prev");
+  const nextBtn = $("#filter-scroll-next");
+  if (!filterBar) return;
+
+  prevBtn?.addEventListener("click", () => {
+    filterBar.scrollBy({ left: -260, behavior: "smooth" });
+  });
+
+  nextBtn?.addEventListener("click", () => {
+    filterBar.scrollBy({ left: 260, behavior: "smooth" });
+  });
+
+  // Wheel horizontal scroll di desktop
+  filterBar.addEventListener("wheel", (e) => {
+    if (Math.abs(e.deltaY) > Math.abs(e.deltaX)) {
+      e.preventDefault();
+      filterBar.scrollLeft += e.deltaY;
+    }
+  }, { passive: false });
+
+  filterBar.addEventListener("scroll", updateFilterArrows, { passive: true });
+  window.addEventListener("resize", updateFilterArrows);
+
+  setTimeout(updateFilterArrows, 100);
+}
+
 
 // Fungsi unduh foto â€” mencoba fetch+blob agar nama file tersimpan rapi,
 // fallback ke window.open jika gambar dari domain lain (cross-origin)
@@ -1105,6 +1169,7 @@ function init() {
   ).join("");
 
   renderFilterBar();
+  initFilterBarScroll();
 
   document.addEventListener("click", (e) => {
     const nav = e.target.closest("[data-nav]");
@@ -1116,6 +1181,7 @@ function init() {
     if (filter) {
       state.filter = filter.dataset.filter;
       $$("[data-filter]").forEach((btn) => btn.classList.toggle("is-active", btn === filter));
+      filter.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "center" });
       renderGallery();
     }
     const like = e.target.closest("[data-like]");
@@ -1134,14 +1200,22 @@ function init() {
       if (standardMap[name]) {
         state.filter = standardMap[name];
         $$("[data-filter]").forEach((btn) => {
-          btn.classList.toggle("is-active", btn.dataset.filter === state.filter);
+          const match = btn.dataset.filter === state.filter;
+          btn.classList.toggle("is-active", match);
+          if (match) btn.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "center" });
         });
       } else {
         // Album custom: filter berdasarkan nama album langsung
         state.filter = `album:${name}`;
         $$("[data-filter]").forEach((btn) => btn.classList.remove("is-active"));
-        const allBtn = $("#filter-all");
-        if (allBtn) allBtn.classList.add("is-active");
+        const customBtn = $(`[data-filter="album:${name}"]`);
+        if (customBtn) {
+          customBtn.classList.add("is-active");
+          customBtn.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "center" });
+        } else {
+          const allBtn = $("#filter-all");
+          if (allBtn) allBtn.classList.add("is-active");
+        }
       }
       setView("semua");
       renderGallery();
