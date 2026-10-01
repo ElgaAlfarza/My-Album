@@ -1643,64 +1643,54 @@ function initAdmin() {
     } catch {}
   }
 
-  // Handle Pindah Foto Massal
+  // Handle Pindah Foto Massal — pakai endpoint server /api/photos/bulk-move
   $("#bulk-move-form")?.addEventListener("submit", async (e) => {
     e.preventDefault();
     const keyword = $("#bulk-move-keyword")?.value.trim();
-    const targetAlbumId = $("#bulk-move-target")?.value;
+    const albumName = $("#bulk-move-album-name")?.value.trim();
     const statusEl = $("#bulk-move-status");
 
-    if (!keyword || !targetAlbumId) {
-      toast("Isi kata kunci dan pilih album tujuan.");
+    if (!keyword || !albumName) {
+      toast("Isi kata kunci judul dan nama album tujuan.");
       return;
     }
 
-    if (statusEl) statusEl.textContent = "Mencari foto...";
-
-    // Muat semua foto dari server
-    const photos = allPhotos().filter((p) =>
-      p.title && p.title.toLowerCase().includes(keyword.toLowerCase())
-    );
-
-    if (photos.length === 0) {
-      if (statusEl) statusEl.textContent = "Tidak ada foto yang cocok.";
-      toast(`Tidak ada foto dengan judul mengandung "${keyword}".`);
+    if (!confirm(`Pindahkan semua foto yang judulnya mengandung "${keyword}" ke album "${albumName}"?\n\nAlbum baru akan dibuat otomatis jika belum ada.`)) {
       return;
     }
 
-    if (!confirm(`Akan memindahkan ${photos.length} foto (judul mengandung "${keyword}") ke album yang dipilih. Lanjutkan?`)) {
-      if (statusEl) statusEl.textContent = "";
-      return;
+    if (statusEl) statusEl.textContent = "⏳ Memindahkan foto ke server...";
+
+    try {
+      const res = await fetch("/api/photos/bulk-move", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-family-pin": getAdminPin(),
+        },
+        body: JSON.stringify({ keyword, album_name: albumName }),
+      });
+      const data = await res.json();
+
+      if (res.ok && data.ok) {
+        if (statusEl) statusEl.textContent = `✅ ${data.message}`;
+        toast(`✅ ${data.moved} foto berhasil dipindah ke album "${albumName}".`);
+        $("#bulk-move-keyword").value = "";
+        $("#bulk-move-album-name").value = "";
+        // Muat ulang galeri
+        await loadServerPhotos();
+        renderGallery();
+        renderFilterBar();
+        loadAdminAlbums();
+        populateUploadAlbums();
+      } else {
+        if (statusEl) statusEl.textContent = `❌ ${data.message || "Gagal memindah foto."}`;
+        toast(data.message || "Gagal memindah foto.");
+      }
+    } catch (err) {
+      if (statusEl) statusEl.textContent = "❌ Gagal terhubung ke server.";
+      toast("Gagal terhubung ke server.");
     }
-
-    if (statusEl) statusEl.textContent = `Memindahkan 0 / ${photos.length}...`;
-
-    let success = 0;
-    let fail = 0;
-    for (const photo of photos) {
-      try {
-        const res = await fetch(`/api/photos/${photo.id}`, {
-          method: "PATCH",
-          headers: {
-            "Content-Type": "application/json",
-            "x-family-pin": getAdminPin(),
-          },
-          body: JSON.stringify({ album_id: targetAlbumId }),
-        });
-        if (res.ok) { success++; }
-        else { fail++; }
-      } catch { fail++; }
-      if (statusEl) statusEl.textContent = `Memindahkan ${success + fail} / ${photos.length}...`;
-    }
-
-    if (statusEl) statusEl.textContent = `✅ Selesai! ${success} foto dipindah, ${fail} gagal.`;
-    toast(`✅ ${success} foto berhasil dipindah ke album baru.`);
-
-    // Muat ulang foto dari server agar gallery terupdate
-    await loadServerPhotos();
-    renderGallery();
-    renderFilterBar();
-    loadAdminAlbums();
   });
 
   let selectedAvatarFile = null;

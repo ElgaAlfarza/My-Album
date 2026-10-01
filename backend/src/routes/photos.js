@@ -238,3 +238,70 @@ photosRouter.post("/:id/restore", requireAdmin, async (req, res, next) => {
     next(err);
   }
 });
+/**
+ * POST /api/photos/bulk-move
+ * Pindahkan semua foto yang judulnya mengandung kata kunci ke album tertentu.
+ * Body: { keyword: string, album_name: string }
+ * Otomatis membuat album baru jika belum ada.
+ */
+photosRouter.post("/bulk-move", async (req, res, next) => {
+  try {
+    const { keyword, album_name } = req.body;
+    if (!keyword || !album_name) {
+      return res.status(400).json({ ok: false, message: "keyword dan album_name harus diisi." });
+    }
+
+    const { adminDb } = await import("../services/supabase.js");
+
+    // 1. Cari atau buat album tujuan
+    let { data: album } = await adminDb
+      .from("albums")
+      .select("id, nama")
+      .ilike("nama", album_name.trim())
+      .maybeSingle();
+
+    if (!album) {
+      const { data: created } = await adminDb
+        .from("albums")
+        .insert({ nama: album_name.trim() })
+        .select("id, nama")
+        .single();
+      album = created;
+    }
+
+    if (!album) {
+      return res.status(500).json({ ok: false, message: "Gagal menemukan atau membuat album." });
+    }
+
+    // 2. Cari foto yang judulnya mengandung keyword
+    const { data: photos } = await adminDb
+      .from("photos")
+      .select("id, title")
+      .ilike("title", `%${keyword.trim()}%`)
+      .is("deleted_at", null);
+
+    if (!photos || photos.length === 0) {
+      return res.json({ ok: true, moved: 0, album, message: "Tidak ada foto yang cocok." });
+    }
+
+    // 3. Pindahkan semua foto ke album tujuan
+    let moved = 0;
+    for (const photo of photos) {
+      await adminDb.from("album_photos").delete().eq("photo_id", photo.id);
+      const { error } = await adminDb
+        .from("album_photos")
+        .upsert({ album_id: album.id, photo_id: photo.id });
+      if (!error) moved++;
+    }
+
+    res.json({
+      ok: true,
+      moved,
+      total: photos.length,
+      album,
+      message: `${moved} foto berhasil dipindah ke album "${album.nama}".`,
+    });
+  } catch (err) {
+    next(err);
+  }
+});
