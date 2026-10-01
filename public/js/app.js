@@ -1309,7 +1309,31 @@ function initAiUploadMode() {
   const modeAiBtn = $("#mode-ai-btn");
   if (!modeManualBtn || !modeAiBtn) return;
 
-  // Toggle antara Manual dan AI
+  // Cegah listener duplikat setiap modal dibuka ulang
+  if (modeManualBtn.dataset.aiInit === "1") {
+    // Sudah di-init — sync tampilan tombol dengan state saat ini
+    if (aiModeActive) {
+      modeAiBtn.className = "btn btn-primary";
+      modeManualBtn.className = "btn btn-outline";
+      const activeInfo = $("#ai-active-info");
+      if (activeInfo) activeInfo.style.display = "block";
+      const statusDiv = $("#ai-mode-status");
+      if (statusDiv) statusDiv.style.display = "block";
+      const statusText = $("#ai-status-text");
+      if (statusText) {
+        statusText.style.color = "#166534";
+        statusText.textContent = "✅ AI siap digunakan!";
+      }
+      // Langsung analisis foto yang sudah dipilih
+      if (pendingUploadFiles && pendingUploadFiles.length > 0) {
+        runAiOnSelectedFiles(pendingUploadFiles);
+      }
+    }
+    return;
+  }
+  modeManualBtn.dataset.aiInit = "1";
+
+  // Toggle Manual
   modeManualBtn.addEventListener("click", () => {
     aiModeActive = false;
     modeManualBtn.className = "btn btn-primary";
@@ -1324,6 +1348,7 @@ function initAiUploadMode() {
     if (resultPanel) resultPanel.style.display = "none";
   });
 
+  // Toggle Otomatis AI
   modeAiBtn.addEventListener("click", async () => {
     const statusDiv = $("#ai-mode-status");
     const activeInfo = $("#ai-active-info");
@@ -1335,7 +1360,10 @@ function initAiUploadMode() {
     modeManualBtn.style.cssText = "min-height:36px;padding:0.4rem 1rem;font-size:13px";
 
     if (statusDiv) statusDiv.style.display = "block";
-    if (statusText) statusText.textContent = "🔍 Memeriksa koneksi AI...";
+    if (statusText) {
+      statusText.style.color = "var(--on-surface-muted)";
+      statusText.textContent = "🔍 Memeriksa koneksi AI...";
+    }
 
     const configured = await checkAiStatus();
 
@@ -1343,13 +1371,22 @@ function initAiUploadMode() {
       aiModeActive = true;
       if (statusText) {
         statusText.style.color = "#166534";
-        statusText.textContent = "✅ AI siap digunakan! Pilih foto dan AI akan otomatis menganalisis.";
+        statusText.textContent = "✅ AI siap! Sedang menganalisis foto...";
       }
       if (activeInfo) activeInfo.style.display = "block";
+
+      // ← FIX UTAMA: langsung analisis foto yang sudah dipilih sekarang!
+      if (pendingUploadFiles && pendingUploadFiles.length > 0) {
+        runAiOnSelectedFiles(pendingUploadFiles);
+      } else {
+        if (statusText) statusText.textContent = "✅ AI siap digunakan! Pilih foto dan AI akan otomatis menganalisis.";
+      }
     } else {
       aiModeActive = false;
       modeAiBtn.className = "btn btn-outline";
+      modeAiBtn.style.cssText = "min-height:36px;padding:0.4rem 1rem;font-size:13px";
       modeManualBtn.className = "btn btn-primary";
+      modeManualBtn.style.cssText = "min-height:36px;padding:0.4rem 1rem;font-size:13px";
       if (statusText) {
         statusText.style.color = "#dc2626";
         statusText.textContent = "❌ API key Gemini belum dipasang. Buka Admin → Pengaturan → Konfigurasi AI untuk memasang key.";
