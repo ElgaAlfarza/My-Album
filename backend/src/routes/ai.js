@@ -142,18 +142,17 @@ aiRouter.get("/test", async (req, res) => {
   const apiKey = await loadApiKeyFromDb();
   if (!apiKey) return res.json({ ok: false, message: "Key belum dipasang." });
 
-  // Coba beberapa model secara berurutan sampai ada yang berhasil
+  // Coba model berurutan sampai ada yang berhasil
   const candidates = [
-    "gemini-1.5-flash",
-    "gemini-1.5-flash-latest",
-    "gemini-1.5-flash-001",
-    "gemini-pro",
-    "gemini-1.0-pro",
+    { v: "v1", m: "gemini-2.5-flash" },
+    { v: "v1", m: "gemini-3.5-flash" },
+    { v: "v1", m: "gemini-2.5-flash-lite" },
+    { v: "v1", m: "gemini-3.7-flash" },
   ];
 
-  for (const model of candidates) {
+  for (const { v, m } of candidates) {
     try {
-      const url = `https://generativelanguage.googleapis.com/v1/models/${model}:generateContent?key=${apiKey}`;
+      const url = `https://generativelanguage.googleapis.com/${v}/models/${m}:generateContent?key=${apiKey}`;
       const r = await fetch(url, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -161,28 +160,12 @@ aiRouter.get("/test", async (req, res) => {
       });
       const body = await r.json();
       if (r.ok) {
-        return res.json({ ok: true, model_used: model, reply: body?.candidates?.[0]?.content?.parts?.[0]?.text });
+        return res.json({ ok: true, model_used: m, reply: body?.candidates?.[0]?.content?.parts?.[0]?.text });
       }
     } catch {}
   }
 
-  // Semua gagal - coba v1beta juga
-  for (const model of candidates) {
-    try {
-      const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
-      const r = await fetch(url, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ contents: [{ parts: [{ text: "Balas: OK" }] }] }),
-      });
-      const body = await r.json();
-      if (r.ok) {
-        return res.json({ ok: true, model_used: model, api_version: "v1beta", reply: body?.candidates?.[0]?.content?.parts?.[0]?.text });
-      }
-    } catch {}
-  }
-
-  return res.json({ ok: false, message: "Tidak ada model yang berhasil. Cek /api/ai/models untuk melihat model yang tersedia." });
+  return res.json({ ok: false, message: "Semua model gagal. Cek /api/ai/models." });
 });
 
 aiRouter.post("/describe", async (req, res, next) => {
@@ -203,16 +186,15 @@ aiRouter.post("/describe", async (req, res, next) => {
 
     const mimeType = mime_type || "image/jpeg";
 
-    // Model yang support vision (multimodal) — dicoba berurutan
+    // Model yang support vision (multimodal) — sesuai hasil /api/ai/models
     const VISION_MODELS = [
-      { version: "v1", model: "gemini-1.5-flash" },
-      { version: "v1", model: "gemini-1.5-flash-latest" },
-      { version: "v1", model: "gemini-1.5-flash-001" },
-      { version: "v1", model: "gemini-1.5-pro" },
-      { version: "v1", model: "gemini-pro-vision" },
-      { version: "v1beta", model: "gemini-1.5-flash" },
-      { version: "v1beta", model: "gemini-1.5-flash-latest" },
-      { version: "v1beta", model: "gemini-pro-vision" },
+      { version: "v1", model: "gemini-2.5-flash" },
+      { version: "v1", model: "gemini-2.5-flash-image" },
+      { version: "v1", model: "gemini-3.5-flash" },
+      { version: "v1", model: "gemini-3.1-flash-image" },
+      { version: "v1", model: "gemini-2.5-flash-lite" },
+      { version: "v1", model: "gemini-3.1-flash-lite-image" },
+      { version: "v1", model: "gemini-3.7-flash" },
     ];
 
     const prompt = `Anda adalah asisten album foto keluarga Indonesia.
