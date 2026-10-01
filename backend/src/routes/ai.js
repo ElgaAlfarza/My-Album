@@ -117,7 +117,7 @@ aiRouter.get("/test", async (req, res) => {
   if (!apiKey) return res.json({ ok: false, message: "Key belum dipasang." });
 
   try {
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
+    const url = `https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
     const r = await fetch(url, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -166,7 +166,7 @@ Pilih album berdasarkan isi foto:
 - Hari Raya: foto lebaran, natal, tahun baru, sungkeman
 - Cucu & Liburan: foto liburan, jalan-jalan, piknik, cucu bermain`;
 
-    const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
+    const apiUrl = `https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
 
     const response = await fetch(apiUrl, {
       method: "POST",
