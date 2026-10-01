@@ -109,6 +109,32 @@ aiRouter.post("/set-key", async (req, res) => {
  * Body: { image_base64: string, mime_type: string }
  */
 /**
+ * GET /api/ai/models
+ * List model Gemini yang tersedia untuk API key ini
+ */
+aiRouter.get("/models", async (req, res) => {
+  const apiKey = await loadApiKeyFromDb();
+  if (!apiKey) return res.json({ ok: false, message: "Key belum dipasang." });
+
+  try {
+    const r = await fetch(
+      `https://generativelanguage.googleapis.com/v1/models?key=${apiKey}`
+    );
+    const body = await r.json();
+    if (r.ok) {
+      // Ambil hanya nama model yang support generateContent
+      const vision = (body.models || [])
+        .filter((m) => (m.supportedGenerationMethods || []).includes("generateContent"))
+        .map((m) => m.name);
+      return res.json({ ok: true, models: vision, raw: body.models?.map((m) => m.name) });
+    }
+    return res.json({ ok: false, status: r.status, error: body });
+  } catch (err) {
+    return res.json({ ok: false, message: err.message });
+  }
+});
+
+/**
  * GET /api/ai/test
  * Tes koneksi Gemini API dengan teks saja (tanpa gambar) untuk diagnosa
  */
@@ -116,21 +142,47 @@ aiRouter.get("/test", async (req, res) => {
   const apiKey = await loadApiKeyFromDb();
   if (!apiKey) return res.json({ ok: false, message: "Key belum dipasang." });
 
-  try {
-    const url = `https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
-    const r = await fetch(url, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ contents: [{ parts: [{ text: "Halo, balas dengan: OK" }] }] }),
-    });
-    const body = await r.json();
-    if (r.ok) {
-      return res.json({ ok: true, message: "Gemini OK", reply: body?.candidates?.[0]?.content?.parts?.[0]?.text });
-    }
-    return res.json({ ok: false, status: r.status, gemini_error: body });
-  } catch (err) {
-    return res.json({ ok: false, message: err.message });
+  // Coba beberapa model secara berurutan sampai ada yang berhasil
+  const candidates = [
+    "gemini-1.5-flash",
+    "gemini-1.5-flash-latest",
+    "gemini-1.5-flash-001",
+    "gemini-pro",
+    "gemini-1.0-pro",
+  ];
+
+  for (const model of candidates) {
+    try {
+      const url = `https://generativelanguage.googleapis.com/v1/models/${model}:generateContent?key=${apiKey}`;
+      const r = await fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ contents: [{ parts: [{ text: "Balas: OK" }] }] }),
+      });
+      const body = await r.json();
+      if (r.ok) {
+        return res.json({ ok: true, model_used: model, reply: body?.candidates?.[0]?.content?.parts?.[0]?.text });
+      }
+    } catch {}
   }
+
+  // Semua gagal - coba v1beta juga
+  for (const model of candidates) {
+    try {
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
+      const r = await fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ contents: [{ parts: [{ text: "Balas: OK" }] }] }),
+      });
+      const body = await r.json();
+      if (r.ok) {
+        return res.json({ ok: true, model_used: model, api_version: "v1beta", reply: body?.candidates?.[0]?.content?.parts?.[0]?.text });
+      }
+    } catch {}
+  }
+
+  return res.json({ ok: false, message: "Tidak ada model yang berhasil. Cek /api/ai/models untuk melihat model yang tersedia." });
 });
 
 aiRouter.post("/describe", async (req, res, next) => {
@@ -151,6 +203,18 @@ aiRouter.post("/describe", async (req, res, next) => {
 
     const mimeType = mime_type || "image/jpeg";
 
+    // Model yang support vision (multimodal) — dicoba berurutan
+    const VISION_MODELS = [
+      { version: "v1", model: "gemini-1.5-flash" },
+      { version: "v1", model: "gemini-1.5-flash-latest" },
+      { version: "v1", model: "gemini-1.5-flash-001" },
+      { version: "v1", model: "gemini-1.5-pro" },
+      { version: "v1", model: "gemini-pro-vision" },
+      { version: "v1beta", model: "gemini-1.5-flash" },
+      { version: "v1beta", model: "gemini-1.5-flash-latest" },
+      { version: "v1beta", model: "gemini-pro-vision" },
+    ];
+
     const prompt = `Anda adalah asisten album foto keluarga Indonesia.
 Analisis foto ini dan kembalikan JSON dengan format berikut (tanpa markdown, langsung JSON saja):
 {
@@ -166,39 +230,47 @@ Pilih album berdasarkan isi foto:
 - Hari Raya: foto lebaran, natal, tahun baru, sungkeman
 - Cucu & Liburan: foto liburan, jalan-jalan, piknik, cucu bermain`;
 
-    const apiUrl = `https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
-
-    const response = await fetch(apiUrl, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        contents: [{
-          parts: [
-            { inline_data: { mime_type: mimeType, data: image_base64 } },
-            { text: prompt },
-          ],
-        }],
-        generationConfig: { temperature: 0.4, maxOutputTokens: 300 },
-      }),
-    });
-
-    if (!response.ok) {
-      const errBody = await response.json().catch(() => ({}));
-      const geminiMsg = errBody?.error?.message || "Unknown error";
-      console.error("Gemini API error:", response.status, geminiMsg);
-
-      if (response.status === 400) {
-        return res.status(400).json({ ok: false, message: `Gemini: ${geminiMsg}` });
-      }
-      if (response.status === 403 || response.status === 401) {
-        return res.status(503).json({ ok: false, message: `API key tidak valid: ${geminiMsg}` });
-      }
-      if (response.status === 429) {
-        return res.status(429).json({ ok: false, message: "Batas kuota AI tercapai. Coba lagi nanti." });
-      }
-      return res.status(502).json({ ok: false, message: `Gemini error ${response.status}: ${geminiMsg}` });
+    // Coba model satu per satu sampai berhasil
+    let response = null;
+    let lastError = "Tidak ada model yang berhasil.";
+    for (const { version, model } of VISION_MODELS) {
+      const apiUrl = `https://generativelanguage.googleapis.com/${version}/models/${model}:generateContent?key=${apiKey}`;
+      try {
+        const r = await fetch(apiUrl, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            contents: [{
+              parts: [
+                { inline_data: { mime_type: mimeType, data: image_base64 } },
+                { text: prompt },
+              ],
+            }],
+            generationConfig: { temperature: 0.4, maxOutputTokens: 300 },
+          }),
+        });
+        if (r.ok) { response = r; break; }
+        const errBody = await r.json().catch(() => ({}));
+        lastError = `${model} (${version}): ${errBody?.error?.message || r.status}`;
+        // Jika bukan 404 (model not found), hentikan — error lain seperti 403 tidak perlu retry
+        if (r.status !== 404) {
+          const geminiMsg = errBody?.error?.message || "Unknown error";
+          if (r.status === 403 || r.status === 401) {
+            return res.status(503).json({ ok: false, message: `API key tidak valid: ${geminiMsg}` });
+          }
+          if (r.status === 429) {
+            return res.status(429).json({ ok: false, message: "Batas kuota AI tercapai. Coba lagi nanti." });
+          }
+          return res.status(502).json({ ok: false, message: `Gemini error ${r.status}: ${geminiMsg}` });
+        }
+      } catch {}
     }
 
+    if (!response) {
+      return res.status(502).json({ ok: false, message: `Semua model gagal. Error terakhir: ${lastError}. Buka /api/ai/models untuk lihat model yang tersedia.` });
+    }
+
+    // Parse respons dari model yang berhasil
     const geminiData = await response.json();
     const rawText = geminiData?.candidates?.[0]?.content?.parts?.[0]?.text || "";
 
