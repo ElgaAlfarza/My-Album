@@ -309,42 +309,6 @@
 
       <form id="upload-form" class="photo-edit" style="display:flex;flex-direction:column;gap:1.25rem;margin-top:0.5rem">
 
-        <!-- Toggle Mode: Manual vs Otomatis AI -->
-        <div style="background:linear-gradient(135deg,var(--surface-alt) 0%,#f0f7ff 100%);border:1.5px solid var(--primary);border-radius:var(--radius-sm);padding:1rem">
-          <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:0.75rem">
-            <div>
-              <strong style="font-size:15px;display:block">✨ Mode Upload</strong>
-              <span style="font-size:12px;color:var(--on-surface-muted)">Pilih cara mengisi keterangan foto</span>
-            </div>
-            <div style="display:flex;gap:0.5rem">
-              <button type="button" id="mode-manual-btn" class="btn btn-primary" style="min-height:36px;padding:0.4rem 1rem;font-size:13px" aria-pressed="true">
-                ✏️ Manual
-              </button>
-              <button type="button" id="mode-ai-btn" class="btn btn-outline" style="min-height:36px;padding:0.4rem 1rem;font-size:13px" aria-pressed="false">
-                🤖 Otomatis AI
-              </button>
-            </div>
-          </div>
-          <!-- Status AI -->
-          <div id="ai-mode-status" style="display:none;margin-top:0.75rem;padding:0.6rem 0.85rem;background:var(--surface-white);border-radius:var(--radius-sm);border:1px solid var(--surface-line)">
-            <span id="ai-status-text" style="font-size:13px;color:var(--on-surface-muted)">🔍 Memeriksa status AI...</span>
-          </div>
-          <!-- Info AI aktif -->
-          <div id="ai-active-info" style="display:none;margin-top:0.75rem;font-size:12px;color:var(--primary)">
-            🤖 AI akan otomatis analisis setiap foto dan mengisi judul, deskripsi, dan memilih album yang sesuai. Anda tetap bisa mengedit sebelum menyimpan.
-          </div>
-        </div>
-
-        <!-- AI Analisis Result (muncul saat AI mode & foto terpilih) -->
-        <div id="ai-result-panel" style="display:none;background:#f0fff4;border:1.5px solid #4ade80;border-radius:var(--radius-sm);padding:1rem">
-          <div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.5rem">
-            <span style="font-size:18px">🤖</span>
-            <strong style="font-size:14px;color:#166534">Hasil Analisis AI</strong>
-            <span id="ai-analyzing-spinner" style="font-size:12px;color:#166534;display:none">⏳ Menganalisis foto...</span>
-          </div>
-          <div id="ai-result-content" style="font-size:13px;color:#166534"></div>
-        </div>
-
         <!-- Preview Foto Terpilih (Mendukung 1 atau Banyak Foto Sekaligus) -->
         <div id="upload-preview-container" style="background:var(--surface-alt);padding:1rem;border-radius:var(--radius-sm);border:1px solid var(--surface-line)">
           <!-- Mode 1 Foto -->
@@ -621,25 +585,8 @@
             </button>
           </div>
         </form>
-
-        <!-- Gemini AI API Key -->
-        <div class="admin-form-box" style="margin-top:1.5rem;border:1.5px solid #4ade80;background:#f0fff4">
-          <h3 style="color:#166534">🤖 Konfigurasi AI Otomatis (Gemini)</h3>
-          <p style="font-size:13px;color:#166534;margin-bottom:0.75rem">
-            Masukkan Google Gemini API Key agar fitur "Upload Otomatis AI" berfungsi. API key gratis tersedia di
-            <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener" style="color:var(--primary)">aistudio.google.com/apikey</a>
-          </p>
-          <div id="ai-key-status" style="font-size:13px;margin-bottom:0.75rem;color:var(--on-surface-muted)">🔍 Memeriksa...</div>
-          <div style="display:flex;gap:0.75rem;flex-wrap:wrap">
-            <input type="password" id="gemini-api-key-input" placeholder="Paste API Key Gemini di sini (AIza...)" style="flex:1;min-width:200px;padding:0.6rem 0.85rem;border:1px solid var(--surface-line);border-radius:var(--radius-sm);font-size:14px;font-family:monospace">
-            <button type="button" id="save-gemini-key-btn" class="btn btn-primary" style="min-height:40px">
-              <span class="material-symbols-outlined">key</span>
-              Simpan Key
-            </button>
-          </div>
-          <span style="font-size:11px;color:var(--on-surface-muted);margin-top:6px;display:block">Key disimpan di server, tidak bisa dilihat lagi setelah disimpan.</span>
-        </div>
       </div>
+
 
       <!-- Panel 2: Kelola Album -->
       <div class="admin-panel" id="tab-album">

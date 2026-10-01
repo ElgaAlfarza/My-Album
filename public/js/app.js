@@ -1,4 +1,4 @@
-const PHOTOS = [];
+﻿const PHOTOS = [];
 
 const FILTERS = [
   { id: "semua", label: "Semua" },
@@ -161,7 +161,7 @@ function photoCard(photo) {
             ${icon("favorite", liked)}
           </button>
         </div>
-        <p class="caption">“${escapeHtml(photo.caption)}”</p>
+        <p class="caption">â€œ${escapeHtml(photo.caption)}â€</p>
       </div>
       <div class="card-actions">
         <button class="btn ${liked ? "btn-secondary" : "btn-soft"} like-btn" type="button" data-like="${escapeHtml(photo.id)}">
@@ -282,8 +282,8 @@ function setView(view) {
 function fillModal(photo) {
   const dateStr = photo.taken_date_label || (photo.year ? `Tahun ${photo.year}` : "");
   $("#modal-title").textContent = `${photo.title}${dateStr ? ` (${dateStr})` : ""}`;
-  $("#modal-caption").textContent = `“${photo.caption}”`;
-  $("#modal-location").textContent = `📍 ${photo.place || "Album Pribadi"} • 📁 ${photo.album || "Foto Keluarga"}`;
+  $("#modal-caption").textContent = `â€œ${photo.caption}â€`;
+  $("#modal-location").textContent = `ðŸ“ ${photo.place || "Album Pribadi"} â€¢ ðŸ“ ${photo.album || "Foto Keluarga"}`;
   const img = $("#modal-img");
   img.src = photo.src;
   img.alt = photo.title;
@@ -418,7 +418,7 @@ async function removeActivePhoto() {
 function openConfirm() {
   const photo = allPhotos().find((p) => p.id === state.activeId);
   if (!photo) return;
-  $("#confirm-copy").textContent = `“${photo.title}” akan dikeluarkan dari lemari. Tekan Tidak jika belum yakin.`;
+  $("#confirm-copy").textContent = `â€œ${photo.title}â€ akan dikeluarkan dari lemari. Tekan Tidak jika belum yakin.`;
   $("#confirm-modal").classList.add("is-open");
 }
 
@@ -450,7 +450,7 @@ function populateUploadAlbums() {
   }
 
   const currentVal = select.value || "Foto Keluarga";
-  // Jangan include __new__ saat mengisi ulang — tambahkan terpisah di akhir
+  // Jangan include __new__ saat mengisi ulang â€” tambahkan terpisah di akhir
   select.innerHTML = Array.from(albumNames)
     .filter((n) => n !== "__new__")
     .map((name) => `<option value="${escapeHtml(name)}">${escapeHtml(name)}</option>`)
@@ -503,7 +503,7 @@ function openUploadModal(filesInput) {
     if (nameEl) nameEl.textContent = file.name;
 
     const sizeEl = $("#upload-preview-filesize");
-    if (sizeEl) sizeEl.textContent = `${(file.size / (1024 * 1024)).toFixed(2)} MB • Berkas Gambar`;
+    if (sizeEl) sizeEl.textContent = `${(file.size / (1024 * 1024)).toFixed(2)} MB â€¢ Berkas Gambar`;
 
     const cleanTitle = file.name.replace(/\.[^.]+$/, "").replace(/[-_]/g, " ");
     if (titleInput) {
@@ -523,11 +523,11 @@ function openUploadModal(filesInput) {
     if (modalTitle) modalTitle.textContent = `Simpan ${files.length} Foto Sekaligus`;
 
     const countEl = $("#upload-multi-count");
-    if (countEl) countEl.textContent = `📸 ${files.length} Foto Terpilih`;
+    if (countEl) countEl.textContent = `ðŸ“¸ ${files.length} Foto Terpilih`;
 
     const totalBytes = files.reduce((acc, f) => acc + (f.size || 0), 0);
     const sizeEl = $("#upload-multi-size");
-    if (sizeEl) sizeEl.textContent = `Total ukuran: ${(totalBytes / (1024 * 1024)).toFixed(2)} MB • ${files.length} berkas foto`;
+    if (sizeEl) sizeEl.textContent = `Total ukuran: ${(totalBytes / (1024 * 1024)).toFixed(2)} MB â€¢ ${files.length} berkas foto`;
 
     const strip = $("#upload-thumbnails-strip");
     if (strip) {
@@ -581,18 +581,6 @@ function openUploadModal(filesInput) {
   if (hintEl) hintEl.textContent = "Foto dicatat diambil hari ini.";
 
   populateUploadAlbums();
-
-  // Inisialisasi tombol toggle AI/Manual
-  initAiUploadMode();
-
-  // Jika AI mode aktif, langsung analisis foto yang dipilih
-  if (aiModeActive && files.length > 0) {
-    runAiOnSelectedFiles(files);
-  } else {
-    // Reset AI result panel
-    const resultPanel = $("#ai-result-panel");
-    if (resultPanel) resultPanel.style.display = "none";
-  }
 
   modal.classList.add("is-open");
 }
@@ -693,7 +681,7 @@ function initUploadHandlers() {
   $("#upload-time-past")?.addEventListener("change", (e) => {
     if (e.target.checked) {
       const hint = $("#upload-date-hint");
-      if (hint) hint.textContent = "💡 Untuk foto lama, silakan pilih tanggal di kalender atau cukup isi tahunnya.";
+      if (hint) hint.textContent = "ðŸ’¡ Untuk foto lama, silakan pilih tanggal di kalender atau cukup isi tahunnya.";
       $("#upload-date-input")?.focus();
     }
   });
@@ -829,13 +817,13 @@ function initUploadHandlers() {
         xhr.upload.onprogress = (evt) => {
           if (evt.lengthComputable && submitBtn) {
             const pct = Math.round((evt.loaded / evt.total) * 100);
-            submitBtn.innerHTML = `⏳ Mengunggah foto ${index + 1} dari ${total} (${pct}%)...`;
+            submitBtn.innerHTML = `â³ Mengunggah foto ${index + 1} dari ${total} (${pct}%)...`;
           }
         };
 
         xhr.upload.onload = () => {
           if (submitBtn) {
-            submitBtn.innerHTML = `⏳ Menyimpan foto ${index + 1} dari ${total}...`;
+            submitBtn.innerHTML = `â³ Menyimpan foto ${index + 1} dari ${total}...`;
           }
         };
 
@@ -912,7 +900,7 @@ function initUploadHandlers() {
     for (let i = 0; i < total; i++) {
       const file = pendingUploadFiles[i];
       if (submitBtn) {
-        submitBtn.innerHTML = `⏳ Menyiapkan foto ${i + 1} dari ${total}...`;
+        submitBtn.innerHTML = `â³ Menyiapkan foto ${i + 1} dari ${total}...`;
       }
       const res = await uploadSingle(file, i);
       if (res.success && res.photo) {
@@ -935,11 +923,11 @@ function initUploadHandlers() {
     updateStats();
 
     if (successCount === total) {
-      toast(`✅ Berhasil menyimpan ${total} foto ke album "${album}"!`);
+      toast(`âœ… Berhasil menyimpan ${total} foto ke album "${album}"!`);
     } else if (successCount > 0) {
-      toast(`✅ Berhasil menyimpan ${successCount} dari ${total} foto ke album "${album}".`);
+      toast(`âœ… Berhasil menyimpan ${successCount} dari ${total} foto ke album "${album}".`);
     } else {
-      toast("❌ Gagal menyimpan foto. Silakan periksa koneksi internet.");
+      toast("âŒ Gagal menyimpan foto. Silakan periksa koneksi internet.");
     }
   });
 }
@@ -988,7 +976,7 @@ function renderFilterBar() {
   filterBar.innerHTML = [...standardBtns, ...customBtns].join("");
 }
 
-// Fungsi unduh foto — mencoba fetch+blob agar nama file tersimpan rapi,
+// Fungsi unduh foto â€” mencoba fetch+blob agar nama file tersimpan rapi,
 // fallback ke window.open jika gambar dari domain lain (cross-origin)
 async function downloadImage(src, name) {
   // Bersihkan nama file dari karakter tidak valid
@@ -1003,7 +991,7 @@ async function downloadImage(src, name) {
   const ext = extMatch ? extMatch[1].toLowerCase().replace("jpeg", "jpg") : "jpg";
   const filename = `${safeName}.${ext}`;
 
-  toast("⏳ Menyiapkan unduhan foto...");
+  toast("â³ Menyiapkan unduhan foto...");
 
   try {
     const res = await fetch(src, { mode: "cors" });
@@ -1019,11 +1007,11 @@ async function downloadImage(src, name) {
       URL.revokeObjectURL(url);
       document.body.removeChild(a);
     }, 2000);
-    toast(`✅ Foto "${name}" berhasil diunduh!`);
+    toast(`âœ… Foto "${name}" berhasil diunduh!`);
   } catch {
-    // Fallback: buka gambar di tab baru — pengguna bisa save manually
+    // Fallback: buka gambar di tab baru â€” pengguna bisa save manually
     window.open(src, "_blank", "noopener");
-    toast("Foto dibuka di tab baru — tekan tahan lama lalu pilih \"Simpan Gambar\".");
+    toast("Foto dibuka di tab baru â€” tekan tahan lama lalu pilih \"Simpan Gambar\".");
   }
 }
 
@@ -1229,7 +1217,7 @@ function init() {
       } catch {
         // Fallback jika backend belum terhubung
       }
-      const text = `Kenangan keluarga: "${photo.title}" (${photo.year || ""})\n“${photo.caption || ""}”`;
+      const text = `Kenangan keluarga: "${photo.title}" (${photo.year || ""})\nâ€œ${photo.caption || ""}â€`;
       const wa = `https://wa.me/?text=${encodeURIComponent(text)}`;
       window.open(wa, "_blank", "noopener");
     });
@@ -1261,206 +1249,11 @@ function init() {
   loadServerPhotos();
   loadServerAlbums();
 
-  // FAB — Tombol tambah foto di bottom nav
+  // FAB â€” Tombol tambah foto di bottom nav
   $("#bottom-fab-upload")?.addEventListener("click", () => openUploadModal());
 }
 
-// ===========================
-// FITUR AI UPLOAD OTOMATIS
-// ===========================
-let aiModeActive = false;
-
-async function checkAiStatus() {
-  try {
-    const res = await fetch("/api/ai/status", { headers: { "x-family-pin": getAdminPin() } });
-    if (!res.ok) return false;
-    const data = await res.json();
-    return data.configured === true;
-  } catch { return false; }
-}
-
-async function analyzePhotoWithAI(file) {
-  return new Promise((resolve) => {
-    const reader = new FileReader();
-    reader.onload = async (e) => {
-      try {
-        // Ambil base64 tanpa prefix data:image/...;base64,
-        const base64 = e.target.result.split(",")[1];
-        const mimeType = file.type || "image/jpeg";
-
-        const res = await fetch("/api/ai/describe", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "x-family-pin": getAdminPin(),
-          },
-          body: JSON.stringify({ image_base64: base64, mime_type: mimeType }),
-        });
-        const data = await res.json();
-        if (data.ok) {
-          resolve(data);
-        } else {
-          // Kembalikan objek error dengan pesan asli dari server
-          resolve({ ok: false, error: data.message || "Gagal menganalisis foto." });
-        }
-      } catch { resolve(null); }
-    };
-    reader.readAsDataURL(file);
-  });
-}
-
-function initAiUploadMode() {
-  const modeManualBtn = $("#mode-manual-btn");
-  const modeAiBtn = $("#mode-ai-btn");
-  if (!modeManualBtn || !modeAiBtn) return;
-
-  // Cegah listener duplikat setiap modal dibuka ulang
-  if (modeManualBtn.dataset.aiInit === "1") {
-    // Sudah di-init — sync tampilan tombol dengan state saat ini
-    if (aiModeActive) {
-      modeAiBtn.className = "btn btn-primary";
-      modeManualBtn.className = "btn btn-outline";
-      const activeInfo = $("#ai-active-info");
-      if (activeInfo) activeInfo.style.display = "block";
-      const statusDiv = $("#ai-mode-status");
-      if (statusDiv) statusDiv.style.display = "block";
-      const statusText = $("#ai-status-text");
-      if (statusText) {
-        statusText.style.color = "#166534";
-        statusText.textContent = "✅ AI siap digunakan!";
-      }
-      // Langsung analisis foto yang sudah dipilih
-      if (pendingUploadFiles && pendingUploadFiles.length > 0) {
-        runAiOnSelectedFiles(pendingUploadFiles);
-      }
-    }
-    return;
-  }
-  modeManualBtn.dataset.aiInit = "1";
-
-  // Toggle Manual
-  modeManualBtn.addEventListener("click", () => {
-    aiModeActive = false;
-    modeManualBtn.className = "btn btn-primary";
-    modeManualBtn.style.cssText = "min-height:36px;padding:0.4rem 1rem;font-size:13px";
-    modeAiBtn.className = "btn btn-outline";
-    modeAiBtn.style.cssText = "min-height:36px;padding:0.4rem 1rem;font-size:13px";
-    const statusDiv = $("#ai-mode-status");
-    const activeInfo = $("#ai-active-info");
-    const resultPanel = $("#ai-result-panel");
-    if (statusDiv) statusDiv.style.display = "none";
-    if (activeInfo) activeInfo.style.display = "none";
-    if (resultPanel) resultPanel.style.display = "none";
-  });
-
-  // Toggle Otomatis AI
-  modeAiBtn.addEventListener("click", async () => {
-    const statusDiv = $("#ai-mode-status");
-    const activeInfo = $("#ai-active-info");
-    const statusText = $("#ai-status-text");
-
-    modeAiBtn.className = "btn btn-primary";
-    modeAiBtn.style.cssText = "min-height:36px;padding:0.4rem 1rem;font-size:13px";
-    modeManualBtn.className = "btn btn-outline";
-    modeManualBtn.style.cssText = "min-height:36px;padding:0.4rem 1rem;font-size:13px";
-
-    if (statusDiv) statusDiv.style.display = "block";
-    if (statusText) {
-      statusText.style.color = "var(--on-surface-muted)";
-      statusText.textContent = "🔍 Memeriksa koneksi AI...";
-    }
-
-    const configured = await checkAiStatus();
-
-    if (configured) {
-      aiModeActive = true;
-      if (statusText) {
-        statusText.style.color = "#166534";
-        statusText.textContent = "✅ AI siap! Sedang menganalisis foto...";
-      }
-      if (activeInfo) activeInfo.style.display = "block";
-
-      // ← FIX UTAMA: langsung analisis foto yang sudah dipilih sekarang!
-      if (pendingUploadFiles && pendingUploadFiles.length > 0) {
-        runAiOnSelectedFiles(pendingUploadFiles);
-      } else {
-        if (statusText) statusText.textContent = "✅ AI siap digunakan! Pilih foto dan AI akan otomatis menganalisis.";
-      }
-    } else {
-      aiModeActive = false;
-      modeAiBtn.className = "btn btn-outline";
-      modeAiBtn.style.cssText = "min-height:36px;padding:0.4rem 1rem;font-size:13px";
-      modeManualBtn.className = "btn btn-primary";
-      modeManualBtn.style.cssText = "min-height:36px;padding:0.4rem 1rem;font-size:13px";
-      if (statusText) {
-        statusText.style.color = "#dc2626";
-        statusText.textContent = "❌ API key Gemini belum dipasang. Buka Admin → Pengaturan → Konfigurasi AI untuk memasang key.";
-      }
-    }
-  });
-}
-
-// Dipanggil setelah foto dipilih — jika AI mode aktif, analisis foto pertama
-async function runAiOnSelectedFiles(files) {
-  if (!aiModeActive || !files || files.length === 0) return;
-
-  const resultPanel = $("#ai-result-panel");
-  const resultContent = $("#ai-result-content");
-  const spinner = $("#ai-analyzing-spinner");
-
-  if (resultPanel) resultPanel.style.display = "block";
-  if (spinner) spinner.style.display = "inline";
-  if (resultContent) resultContent.innerHTML = "";
-
-  // Analisis foto pertama (untuk multi-foto, ambil representatif)
-  const file = files[0];
-  if (resultContent) {
-    resultContent.innerHTML = `<em>⏳ Menganalisis foto "${file.name}"...</em>`;
-  }
-
-  const result = await analyzePhotoWithAI(file);
-  if (spinner) spinner.style.display = "none";
-
-  if (!result || result.ok === false) {
-    const errMsg = result?.error || "Gagal menganalisis foto. Cek koneksi atau kuota AI Anda.";
-    if (resultContent) {
-      resultContent.innerHTML = `<span style="color:#dc2626">❌ ${escapeHtml(errMsg)}</span>
-        <br><small style="color:#6b7280;margin-top:4px;display:block">
-          Coba cek key di: <a href="https://my-album-xi.vercel.app/api/ai/test" target="_blank" style="color:var(--primary)">Test koneksi AI</a>
-        </small>`;
-    }
-    return;
-  }
-
-  // Isi form dengan hasil AI
-  const titleInput = $("#upload-title-input");
-  const captionInput = $("#upload-caption-input");
-  const placeInput = $("#upload-place-input");
-  const albumSelect = $("#upload-target-album");
-
-  if (titleInput && result.title) titleInput.value = result.title;
-  if (captionInput && result.description) captionInput.value = result.description;
-  if (placeInput && result.place) placeInput.value = result.place;
-
-  // Set album dari saran AI
-  if (albumSelect && result.album) {
-    const opts = Array.from(albumSelect.options);
-    const match = opts.find((o) => o.value === result.album || o.text.includes(result.album));
-    if (match) albumSelect.value = match.value;
-  }
-
-  // Tampilkan ringkasan hasil
-  if (resultContent) {
-    resultContent.innerHTML = `
-      <strong>Judul:</strong> ${escapeHtml(result.title || "-")}<br>
-      <strong>Deskripsi:</strong> ${escapeHtml(result.description || "-")}<br>
-      <strong>Album saran AI:</strong> ${escapeHtml(result.album || "-")}
-      ${result.place ? `<br><strong>Lokasi tebakan:</strong> ${escapeHtml(result.place)}` : ""}
-      <br><span style="font-size:11px;opacity:0.8;margin-top:4px;display:block">✏️ Anda bisa mengedit hasilnya sebelum menyimpan.</span>
-    `;
-  }
-}
-
+// --- ADMIN & PENGATURAN LEMARI KENANGAN ---
 // --- ADMIN & PENGATURAN LEMARI KENANGAN ---
 const SETTINGS_STORAGE_KEY = "album_kenangan_settings";
 
@@ -1585,8 +1378,8 @@ async function loadAdminAlbums() {
           (album) => `
         <div class="admin-item">
           <div class="admin-item-info">
-            <strong>📁 ${escapeHtml(album.nama)}</strong>
-            <span>${escapeHtml(album.deskripsi || "Tanpa deskripsi")} • ${escapeHtml(album.photo_count_label || "0 lembar foto")}</span>
+            <strong>ðŸ“ ${escapeHtml(album.nama)}</strong>
+            <span>${escapeHtml(album.deskripsi || "Tanpa deskripsi")} â€¢ ${escapeHtml(album.photo_count_label || "0 lembar foto")}</span>
           </div>
           <button type="button" class="btn btn-outline" onclick="deleteAlbumById('${album.id}')" style="min-height:36px;padding:0.35rem 0.75rem;font-size:13px;color:var(--secondary)">
             <span class="material-symbols-outlined" style="font-size:16px">delete</span>
@@ -1642,7 +1435,7 @@ async function loadAdminMembers() {
           (m) => `
         <div class="admin-item">
           <div class="admin-item-info">
-            <strong>${m.role === "admin" ? "👑" : "👤"} ${escapeHtml(m.nama)} ${m.role === "admin" ? "(Pengelola)" : ""}</strong>
+            <strong>${m.role === "admin" ? "ðŸ‘‘" : "ðŸ‘¤"} ${escapeHtml(m.nama)} ${m.role === "admin" ? "(Pengelola)" : ""}</strong>
             <span>${m.no_hp ? "WA: " + escapeHtml(m.no_hp) : "Tanpa nomor kontak"}</span>
           </div>
           ${
@@ -1705,7 +1498,7 @@ async function loadAdminTrash() {
           <img src="${p.thumbnail_url || p.display_url || p.src}" style="width:50px;height:50px;border-radius:6px;object-fit:cover" alt="">
           <div class="admin-item-info" style="flex:1">
             <strong>${escapeHtml(p.title || "Kenangan")}</strong>
-            <span>${escapeHtml(p.place || "Tempat tidak dicatat")} • Dikeluarkan pada ${new Date(p.deleted_at).toLocaleDateString("id-ID")}</span>
+            <span>${escapeHtml(p.place || "Tempat tidak dicatat")} â€¢ Dikeluarkan pada ${new Date(p.deleted_at).toLocaleDateString("id-ID")}</span>
           </div>
           <button type="button" class="btn btn-outline" onclick="restorePhotoById('${p.id}')" style="min-height:36px;padding:0.35rem 0.75rem;font-size:13px;color:var(--primary)">
             <span class="material-symbols-outlined" style="font-size:16px">restore</span>
@@ -1728,7 +1521,7 @@ async function restorePhotoById(photoId) {
       headers: { "x-family-pin": getAdminPin() },
     });
     if (res.ok) {
-      toast("✅ Foto berhasil dipulihkan ke lemari kenangan!");
+      toast("âœ… Foto berhasil dipulihkan ke lemari kenangan!");
       loadAdminTrash();
       renderGallery();
     } else {
@@ -1758,16 +1551,6 @@ function initAdmin() {
   const openAdminModal = () => {
     $("#admin-modal")?.classList.add("is-open");
     loadSettings();
-    // Cek status AI key saat admin modal dibuka
-    checkAiStatus().then((configured) => {
-      const el = $("#ai-key-status");
-      if (el) {
-        el.textContent = configured
-          ? "✅ API key Gemini sudah terpasang dan siap digunakan."
-          : "❌ Belum ada API key. Paste key di bawah lalu klik Simpan Key.";
-        el.style.color = configured ? "#166534" : "#dc2626";
-      }
-    });
   };
 
   const closeAdminModal = () => {
@@ -1809,7 +1592,7 @@ function initAdmin() {
         setAdminLoggedIn(true);
         closePinModal();
         openAdminModal();
-        toast("👑 Selamat datang kembali di Panel Admin Lemari!");
+        toast("ðŸ‘‘ Selamat datang kembali di Panel Admin Lemari!");
       } else {
         toast(data.message || "PIN keluarga tidak sesuai. Silakan coba lagi.");
       }
@@ -1819,7 +1602,7 @@ function initAdmin() {
         setAdminLoggedIn(true);
         closePinModal();
         openAdminModal();
-        toast("👑 Masuk Mode Admin.");
+        toast("ðŸ‘‘ Masuk Mode Admin.");
       } else {
         toast("PIN tidak sesuai.");
       }
@@ -1829,36 +1612,6 @@ function initAdmin() {
   $("#close-admin-modal")?.addEventListener("click", closeAdminModal);
   $("#admin-modal")?.addEventListener("click", (e) => {
     if (e.target.id === "admin-modal") closeAdminModal();
-  });
-  // Simpan Gemini API Key
-  $("#save-gemini-key-btn")?.addEventListener("click", async () => {
-    const keyInput = $("#gemini-api-key-input");
-    const key = keyInput?.value.trim();
-    if (!key || key.length < 10) {
-      toast("Paste API key Gemini yang valid (dimulai dengan AIza...).");
-      return;
-    }
-    try {
-      const res = await fetch("/api/ai/set-key", {
-        method: "POST",
-        headers: { "Content-Type": "application/json", "x-family-pin": getAdminPin() },
-        body: JSON.stringify({ key }),
-      });
-      const data = await res.json();
-      if (res.ok && data.ok) {
-        toast("✅ API key Gemini berhasil disimpan! Fitur AI sudah aktif.");
-        const el = $("#ai-key-status");
-        if (el) {
-          el.textContent = "✅ API key Gemini sudah terpasang dan siap digunakan.";
-          el.style.color = "#166534";
-        }
-        if (keyInput) keyInput.value = "";
-      } else {
-        toast(data.message || "Gagal menyimpan API key.");
-      }
-    } catch {
-      toast("Gagal terhubung ke server.");
-    }
   });
 
   // Tab switcher
@@ -1891,7 +1644,7 @@ function initAdmin() {
     } catch {}
   }
 
-  // Handle Pindah Foto Massal — pakai endpoint server /api/photos/bulk-move
+  // Handle Pindah Foto Massal â€” pakai endpoint server /api/photos/bulk-move
   $("#bulk-move-form")?.addEventListener("submit", async (e) => {
     e.preventDefault();
     const keyword = $("#bulk-move-keyword")?.value.trim();
@@ -1907,7 +1660,7 @@ function initAdmin() {
       return;
     }
 
-    if (statusEl) statusEl.textContent = "⏳ Memindahkan foto ke server...";
+    if (statusEl) statusEl.textContent = "â³ Memindahkan foto ke server...";
 
     try {
       const res = await fetch("/api/photos/bulk-move", {
@@ -1921,8 +1674,8 @@ function initAdmin() {
       const data = await res.json();
 
       if (res.ok && data.ok) {
-        if (statusEl) statusEl.textContent = `✅ ${data.message}`;
-        toast(`✅ ${data.moved} foto berhasil dipindah ke album "${albumName}".`);
+        if (statusEl) statusEl.textContent = `âœ… ${data.message}`;
+        toast(`âœ… ${data.moved} foto berhasil dipindah ke album "${albumName}".`);
         $("#bulk-move-keyword").value = "";
         $("#bulk-move-album-name").value = "";
         // Muat ulang galeri
@@ -1932,11 +1685,11 @@ function initAdmin() {
         loadAdminAlbums();
         populateUploadAlbums();
       } else {
-        if (statusEl) statusEl.textContent = `❌ ${data.message || "Gagal memindah foto."}`;
+        if (statusEl) statusEl.textContent = `âŒ ${data.message || "Gagal memindah foto."}`;
         toast(data.message || "Gagal memindah foto.");
       }
     } catch (err) {
-      if (statusEl) statusEl.textContent = "❌ Gagal terhubung ke server.";
+      if (statusEl) statusEl.textContent = "âŒ Gagal terhubung ke server.";
       toast("Gagal terhubung ke server.");
     }
   });
@@ -1958,7 +1711,7 @@ function initAdmin() {
     const statusEl = $("#avatar-upload-status");
     if (statusEl) {
       statusEl.style.color = "var(--primary)";
-      statusEl.textContent = "📸 Foto profil dipilih! Klik tombol 'Simpan Perubahan Tampilan' di bawah.";
+      statusEl.textContent = "ðŸ“¸ Foto profil dipilih! Klik tombol 'Simpan Perubahan Tampilan' di bawah.";
     }
     toast("Foto profil dipilih. Klik Simpan Perubahan Tampilan di bawah ya.");
   });
@@ -1988,7 +1741,7 @@ function initAdmin() {
     const originalBtnHtml = submitBtn ? submitBtn.innerHTML : "";
     if (submitBtn) {
       submitBtn.disabled = true;
-      submitBtn.innerHTML = `⏳ Sedang menyimpan perubahan...`;
+      submitBtn.innerHTML = `â³ Sedang menyimpan perubahan...`;
     }
 
     const statusEl = $("#avatar-upload-status");
@@ -1996,7 +1749,7 @@ function initAdmin() {
 
     // 1. Jika ada berkas foto profil baru, unggah terlebih dahulu
     if (selectedAvatarFile) {
-      if (statusEl) statusEl.textContent = "⏳ Sedang mengunggah foto profil ke server...";
+      if (statusEl) statusEl.textContent = "â³ Sedang mengunggah foto profil ke server...";
       try {
         const fd = new FormData();
         fd.append("avatar", selectedAvatarFile);
@@ -2064,11 +1817,11 @@ function initAdmin() {
         body: JSON.stringify(payload),
       });
       const data = await res.json().catch(() => ({}));
-      if (statusEl) statusEl.textContent = "✅ Foto profil & pengaturan tersimpan rapi!";
-      toast(data.message || "✅ Pengaturan lemari dan profil berhasil disimpan!");
+      if (statusEl) statusEl.textContent = "âœ… Foto profil & pengaturan tersimpan rapi!";
+      toast(data.message || "âœ… Pengaturan lemari dan profil berhasil disimpan!");
     } catch {
-      if (statusEl) statusEl.textContent = "✅ Disimpan di perangkat ini.";
-      toast("✅ Pengaturan disimpan di perangkat ini.");
+      if (statusEl) statusEl.textContent = "âœ… Disimpan di perangkat ini.";
+      toast("âœ… Pengaturan disimpan di perangkat ini.");
     } finally {
       if (submitBtn) {
         submitBtn.disabled = false;
@@ -2095,7 +1848,7 @@ function initAdmin() {
       });
       const data = await res.json();
       if (res.ok) {
-        toast(`✅ Album "${nama}" berhasil dibuat!`);
+        toast(`âœ… Album "${nama}" berhasil dibuat!`);
         $("#new-album-name").value = "";
         $("#new-album-desc").value = "";
         loadAdminAlbums();
@@ -2126,7 +1879,7 @@ function initAdmin() {
       });
       const data = await res.json();
       if (res.ok) {
-        toast(`✅ Anggota keluarga "${nama}" berhasil ditambahkan!`);
+        toast(`âœ… Anggota keluarga "${nama}" berhasil ditambahkan!`);
         $("#new-member-name").value = "";
         $("#new-member-phone").value = "";
         loadAdminMembers();
@@ -2175,13 +1928,13 @@ function initAdmin() {
         $("#old-pin-input").value = "";
         $("#new-pin-input").value = "";
         $("#confirm-new-pin-input").value = "";
-        toast("✅ PIN Admin berhasil diganti! Gunakan PIN baru ini untuk masuk berikutnya.");
+        toast("âœ… PIN Admin berhasil diganti! Gunakan PIN baru ini untuk masuk berikutnya.");
       } else {
         toast(data.message || "Gagal mengganti PIN.");
       }
     } catch {
       localStorage.setItem("family_admin_pin", newPin);
-      toast("✅ PIN Admin berhasil disimpan di perangkat ini.");
+      toast("âœ… PIN Admin berhasil disimpan di perangkat ini.");
     }
   });
 
@@ -2219,13 +1972,13 @@ async function syncFamilyTreeFromServer() {
     if (!res.ok) return;
     const data = await res.json();
     if (data.tree && Array.isArray(data.tree) && data.tree.length > 0) {
-      // Server punya data → update localStorage dan render
+      // Server punya data â†’ update localStorage dan render
       try {
         localStorage.setItem(TREE_STORAGE_KEY, JSON.stringify(data.tree));
       } catch {}
       renderFamilyTree();
     } else if (loadFamilyTree().length > 0) {
-      // Server kosong tapi localStorage ada → upload ke server
+      // Server kosong tapi localStorage ada â†’ upload ke server
       const members = loadFamilyTree();
       saveFamilyTree(members);
     }
@@ -2238,7 +1991,7 @@ function saveFamilyTree(members) {
   try {
     localStorage.setItem(TREE_STORAGE_KEY, JSON.stringify(members));
   } catch {}
-  // Simpan ke server (best-effort) — tanpa pin, anyone can update
+  // Simpan ke server (best-effort) â€” tanpa pin, anyone can update
   fetch("/api/settings/family-tree", {
     method: "POST",
     headers: { "Content-Type": "application/json", "x-family-pin": getAdminPin() },
@@ -2284,7 +2037,7 @@ function renderFamilyTree() {
 
       // Pasangan
       const spouse = m.spouse_id ? members.find((x) => x.id === m.spouse_id) : null;
-      const lifespan = [m.born_year, m.died_year ? `† ${m.died_year}` : ""].filter(Boolean).join(" – ");
+      const lifespan = [m.born_year, m.died_year ? `â€  ${m.died_year}` : ""].filter(Boolean).join(" â€“ ");
 
       out += `
         <div class="tree-node">
@@ -2308,9 +2061,9 @@ function renderFamilyTree() {
             </div>
             ${spouse && !rendered.has(spouse.id) ? (() => {
               rendered.add(spouse.id);
-              const spouseLifespan = [spouse.born_year, spouse.died_year ? `† ${spouse.died_year}` : ""].filter(Boolean).join(" – ");
+              const spouseLifespan = [spouse.born_year, spouse.died_year ? `â€  ${spouse.died_year}` : ""].filter(Boolean).join(" â€“ ");
               return `
-                <div class="tree-spouse-line">❤</div>
+                <div class="tree-spouse-line">â¤</div>
                 <div class="tree-card tree-card-spouse" data-tree-id="${escapeHtml(spouse.id)}">
                   <div class="tree-avatar tree-avatar-spouse">${escapeHtml(spouse.name[0] || "?").toUpperCase()}</div>
                   <div class="tree-info">
@@ -2360,8 +2113,8 @@ function populateTreeSelects(members, excludeId) {
     .map((m) => `<option value="${escapeHtml(m.id)}">${escapeHtml(m.name)}${m.role ? " (" + escapeHtml(m.role) + ")" : ""}</option>`)
     .join("");
 
-  parentSel.innerHTML = `<option value="">— Tidak ada / Akar silsilah —</option>${opts}`;
-  spouseSel.innerHTML = `<option value="">— Tidak ada / Belum menikah —</option>${opts}`;
+  parentSel.innerHTML = `<option value="">â€” Tidak ada / Akar silsilah â€”</option>${opts}`;
+  spouseSel.innerHTML = `<option value="">â€” Tidak ada / Belum menikah â€”</option>${opts}`;
 }
 
 function openTreeModal(editId, defaultParentId) {
@@ -2452,7 +2205,7 @@ function initFamilyTree() {
           }
         }
       }
-      toast(`✅ "${name}" berhasil diperbarui.`);
+      toast(`âœ… "${name}" berhasil diperbarui.`);
     } else {
       // Tambah baru
       const newId = `tree-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
@@ -2465,7 +2218,7 @@ function initFamilyTree() {
           members[spouseIdx] = { ...members[spouseIdx], spouse_id: newId };
         }
       }
-      toast(`✅ "${name}" berhasil ditambahkan ke silsilah keluarga.`);
+      toast(`âœ… "${name}" berhasil ditambahkan ke silsilah keluarga.`);
     }
 
     saveFamilyTree(members);
