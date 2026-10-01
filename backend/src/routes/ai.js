@@ -1,44 +1,122 @@
 import { Router } from "express";
 import { requireFamily } from "../middleware/auth.js";
+import { adminDb } from "../services/supabase.js";
+import { isSupabaseConfigured } from "../config/env.js";
 
 export const aiRouter = Router();
 aiRouter.use(requireFamily);
 
-// Simpan API key di memori (bisa di-set via admin atau env)
+// Cache in-memory (untuk performa, tapi diisi dari Supabase saat diperlukan)
 let cachedApiKey = process.env.GEMINI_API_KEY || "";
 
 /**
- * GET /api/ai/status
- * Cek apakah API key sudah terpasang
+ * Muat API key dari Supabase (fallback jika memory kosong)
+ * Disimpan di kolom no_hp admin member sebagai bagian dari JSON settings
  */
-aiRouter.get("/status", (req, res) => {
-  res.json({ configured: !!cachedApiKey });
+async function loadApiKeyFromDb() {
+  if (cachedApiKey) return cachedApiKey;
+  if (!isSupabaseConfigured()) return "";
+  try {
+    const { data: member } = await adminDb
+      .from("family_members")
+      .select("no_hp")
+      .eq("role", "admin")
+      .limit(1)
+      .maybeSingle();
+
+    if (member && member.no_hp) {
+      let settings = {};
+      try {
+        // no_hp bisa berupa JSON atau string biasa
+        if (member.no_hp.startsWith("{")) {
+          settings = JSON.parse(member.no_hp);
+        }
+      } catch {}
+      if (settings.gemini_api_key) {
+        cachedApiKey = settings.gemini_api_key;
+        return cachedApiKey;
+      }
+    }
+  } catch (err) {
+    console.warn("Gagal memuat Gemini key dari DB:", err.message);
+  }
+  return "";
+}
+
+/**
+ * Simpan API key ke Supabase (merge dengan settings yang sudah ada)
+ */
+async function saveApiKeyToDb(key) {
+  if (!isSupabaseConfigured()) return;
+  try {
+    const { data: member } = await adminDb
+      .from("family_members")
+      .select("no_hp")
+      .eq("role", "admin")
+      .limit(1)
+      .maybeSingle();
+
+    let settings = {};
+    if (member && member.no_hp && member.no_hp.startsWith("{")) {
+      try { settings = JSON.parse(member.no_hp); } catch {}
+    }
+    settings.gemini_api_key = key;
+
+    await adminDb
+      .from("family_members")
+      .update({ no_hp: JSON.stringify(settings) })
+      .eq("role", "admin");
+  } catch (err) {
+    console.warn("Gagal menyimpan Gemini key ke DB:", err.message);
+    throw err;
+  }
+}
+
+/**
+ * GET /api/ai/status
+ * Cek apakah API key sudah terpasang (cek memory + DB)
+ */
+aiRouter.get("/status", async (req, res) => {
+  const key = await loadApiKeyFromDb();
+  res.json({ configured: !!key });
 });
 
 /**
  * POST /api/ai/set-key
- * Simpan API key Gemini (hanya dari admin)
+ * Simpan API key Gemini ke Supabase (persisten, tidak hilang saat restart)
  */
-aiRouter.post("/set-key", (req, res) => {
+aiRouter.post("/set-key", async (req, res) => {
   const { key } = req.body;
   if (!key || typeof key !== "string" || key.trim().length < 10) {
     return res.status(400).json({ ok: false, message: "API key tidak valid." });
   }
-  cachedApiKey = key.trim();
-  res.json({ ok: true, message: "API key berhasil disimpan." });
+  const trimmedKey = key.trim();
+
+  // Simpan ke memory dan ke Supabase
+  cachedApiKey = trimmedKey;
+  try {
+    await saveApiKeyToDb(trimmedKey);
+    res.json({ ok: true, message: "API key berhasil disimpan ke cloud (tidak akan hilang saat refresh)." });
+  } catch {
+    // Memory sudah tersimpan, Supabase gagal — tetap laporkan sukses tapi kasih warning
+    res.json({ ok: true, message: "API key disimpan di server. Peringatan: tidak bisa disimpan ke cloud, mungkin hilang saat restart." });
+  }
 });
 
 /**
  * POST /api/ai/describe
- * Analisis foto dengan Gemini Vision dan hasilkan judul + deskripsi + saran album
+ * Analisis foto dengan Gemini Vision → judul + deskripsi + saran album
  * Body: { image_base64: string, mime_type: string }
  */
 aiRouter.post("/describe", async (req, res, next) => {
   try {
-    if (!cachedApiKey) {
+    // Load key dari DB jika memory kosong (handle Vercel cold start)
+    const apiKey = await loadApiKeyFromDb();
+
+    if (!apiKey) {
       return res.status(503).json({
         ok: false,
-        message: "API key Gemini belum dipasang. Silakan atur di Admin → Pengaturan.",
+        message: "API key Gemini belum dipasang. Silakan atur di Admin → Pengaturan → Konfigurasi AI.",
       });
     }
 
@@ -64,7 +142,7 @@ Pilih album berdasarkan isi foto:
 - Hari Raya: foto lebaran, natal, tahun baru, sungkeman
 - Cucu & Liburan: foto liburan, jalan-jalan, piknik, cucu bermain`;
 
-    const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${cachedApiKey}`;
+    const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
 
     const response = await fetch(apiUrl, {
       method: "POST",
@@ -90,7 +168,7 @@ Pilih album berdasarkan isi foto:
         return res.status(400).json({ ok: false, message: "Format gambar tidak didukung AI." });
       }
       if (response.status === 403 || response.status === 401) {
-        return res.status(503).json({ ok: false, message: "API key tidak valid atau expired." });
+        return res.status(503).json({ ok: false, message: "API key tidak valid atau expired. Paste key baru di Admin → Pengaturan." });
       }
       if (response.status === 429) {
         return res.status(429).json({ ok: false, message: "Batas kuota AI tercapai. Coba lagi nanti." });
@@ -101,14 +179,11 @@ Pilih album berdasarkan isi foto:
     const geminiData = await response.json();
     const rawText = geminiData?.candidates?.[0]?.content?.parts?.[0]?.text || "";
 
-    // Parse JSON dari response Gemini
     let parsed = {};
     try {
-      // Bersihkan markdown code block jika ada
       const cleaned = rawText.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
       parsed = JSON.parse(cleaned);
     } catch {
-      // Fallback jika JSON tidak valid
       parsed = {
         title: "",
         description: rawText.slice(0, 200),
