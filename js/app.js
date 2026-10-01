@@ -1249,11 +1249,10 @@ function init() {
   loadServerPhotos();
   loadServerAlbums();
 
-  // FAB â€” Tombol tambah foto di bottom nav
-  $("#bottom-fab-upload")?.addEventListener("click", () => openUploadModal());
+  // FAB - Tombol tambah foto di bottom nav (trigger file picker)
+  $("#bottom-fab-upload")?.addEventListener("click", () => { const fi = $("#foto-input"); if (fi) fi.click(); });
 }
 
-// --- ADMIN & PENGATURAN LEMARI KENANGAN ---
 // --- ADMIN & PENGATURAN LEMARI KENANGAN ---
 const SETTINGS_STORAGE_KEY = "album_kenangan_settings";
 
