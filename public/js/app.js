@@ -1,4 +1,4 @@
-﻿const PHOTOS = [];
+const PHOTOS = [];
 
 const FILTERS = [
   { id: "semua", label: "Semua" },
@@ -787,9 +787,89 @@ function initUploadHandlers() {
       warm = false;
     }
 
-    // Helper untuk upload 1 file dengan XMLHttpRequest
-    function uploadSingle(file, index) {
+    /**
+     * Kompresi foto ke HD (max 2560px, kualitas 92%) sebelum upload.
+     * Hanya kompres jika file > 1.5MB — foto kecil tidak disentuh.
+     * Kualitas 92% = hampir tidak ada perbedaan visual di layar HP/laptop.
+     */
+    function compressImageHD(file) {
       return new Promise((resolve) => {
+        // Jika file sudah kecil (< 1.5MB), langsung pakai tanpa kompresi
+        if (file.size < 1.5 * 1024 * 1024) {
+          resolve(file);
+          return;
+        }
+        // Jika bukan gambar, langsung pakai
+        if (!file.type.startsWith("image/")) {
+          resolve(file);
+          return;
+        }
+
+        const MAX_PX = 2560; // 2K — lebih dari cukup untuk HD
+        const QUALITY = 0.92; // 92% — sangat tinggi, hampir tidak ada perbedaan visual
+
+        const img = new Image();
+        const url = URL.createObjectURL(file);
+
+        img.onload = () => {
+          URL.revokeObjectURL(url);
+          let { width, height } = img;
+
+          // Hanya resize jika dimensi melebihi MAX_PX
+          if (width > MAX_PX || height > MAX_PX) {
+            if (width > height) {
+              height = Math.round((height / width) * MAX_PX);
+              width = MAX_PX;
+            } else {
+              width = Math.round((width / height) * MAX_PX);
+              height = MAX_PX;
+            }
+          }
+
+          const canvas = document.createElement("canvas");
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext("2d");
+
+          // imageSmoothingQuality: high = hasil lebih tajam saat resize
+          ctx.imageSmoothingEnabled = true;
+          ctx.imageSmoothingQuality = "high";
+          ctx.drawImage(img, 0, 0, width, height);
+
+          canvas.toBlob(
+            (blob) => {
+              if (!blob || blob.size >= file.size) {
+                // Jika hasil kompresi lebih besar, pakai file asli
+                resolve(file);
+              } else {
+                // Buat File baru dengan nama asli
+                const compressed = new File([blob], file.name, {
+                  type: "image/jpeg",
+                  lastModified: file.lastModified,
+                });
+                console.log(
+                  `[Kompresi] ${file.name}: ${(file.size / 1024 / 1024).toFixed(2)}MB → ${(compressed.size / 1024 / 1024).toFixed(2)}MB (${width}×${height}px)`
+                );
+                resolve(compressed);
+              }
+            },
+            "image/jpeg",
+            QUALITY
+          );
+        };
+
+        img.onerror = () => {
+          URL.revokeObjectURL(url);
+          resolve(file); // Jika gagal load, pakai file asli
+        };
+
+        img.src = url;
+      });
+    }
+
+    // Helper untuk upload 1 file dengan XMLHttpRequest
+    async function uploadSingle(file, index) {
+      return new Promise(async (resolve) => {
         let photoTitle = "";
         if (baseTitle) {
           photoTitle = total === 1 ? baseTitle : `${baseTitle} (${index + 1})`;
@@ -797,8 +877,12 @@ function initUploadHandlers() {
           photoTitle = file.name.replace(/\.[^.]+$/, "").replace(/[-_]/g, " ") || `Foto Kenangan ${index + 1}`;
         }
 
+        // Kompres foto ke HD sebelum upload (hanya jika > 1.5MB)
+        if (submitBtn) submitBtn.innerHTML = `⚡ Menyiapkan foto ${index + 1} dari ${total}...`;
+        const fileToUpload = await compressImageHD(file);
+
         const fd = new FormData();
-        fd.append("photo", file);
+        fd.append("photo", fileToUpload);
         fd.append("title", photoTitle);
         fd.append("caption", caption);
         fd.append("place", place);
