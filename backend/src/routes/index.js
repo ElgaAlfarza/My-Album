@@ -6,6 +6,7 @@ import { shareRouter } from "./share.js";
 import { exportRouter } from "./export.js";
 import { authRouter } from "./auth.js";
 import { settingsRouter } from "./settings.js";
+import { aiRouter } from "./ai.js";
 
 export const apiRouter = Router();
 
@@ -25,6 +26,7 @@ apiRouter.use("/stats", statsRouter);
 apiRouter.use("/share", shareRouter);
 apiRouter.use("/export", exportRouter);
 apiRouter.use("/settings", settingsRouter);
+apiRouter.use("/ai", aiRouter);
 apiRouter.use("/members", authRouter);
 apiRouter.use("/auth", authRouter);
 apiRouter.use("/", authRouter);

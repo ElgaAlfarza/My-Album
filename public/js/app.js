@@ -582,6 +582,18 @@ function openUploadModal(filesInput) {
 
   populateUploadAlbums();
 
+  // Inisialisasi tombol toggle AI/Manual
+  initAiUploadMode();
+
+  // Jika AI mode aktif, langsung analisis foto yang dipilih
+  if (aiModeActive && files.length > 0) {
+    runAiOnSelectedFiles(files);
+  } else {
+    // Reset AI result panel
+    const resultPanel = $("#ai-result-panel");
+    if (resultPanel) resultPanel.style.display = "none";
+  }
+
   modal.classList.add("is-open");
 }
 
@@ -1253,6 +1265,156 @@ function init() {
   $("#bottom-fab-upload")?.addEventListener("click", () => openUploadModal());
 }
 
+// ===========================
+// FITUR AI UPLOAD OTOMATIS
+// ===========================
+let aiModeActive = false;
+
+async function checkAiStatus() {
+  try {
+    const res = await fetch("/api/ai/status", { headers: { "x-family-pin": getAdminPin() } });
+    if (!res.ok) return false;
+    const data = await res.json();
+    return data.configured === true;
+  } catch { return false; }
+}
+
+async function analyzePhotoWithAI(file) {
+  return new Promise((resolve) => {
+    const reader = new FileReader();
+    reader.onload = async (e) => {
+      try {
+        // Ambil base64 tanpa prefix data:image/...;base64,
+        const base64 = e.target.result.split(",")[1];
+        const mimeType = file.type || "image/jpeg";
+
+        const res = await fetch("/api/ai/describe", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "x-family-pin": getAdminPin(),
+          },
+          body: JSON.stringify({ image_base64: base64, mime_type: mimeType }),
+        });
+        const data = await res.json();
+        resolve(data.ok ? data : null);
+      } catch { resolve(null); }
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
+function initAiUploadMode() {
+  const modeManualBtn = $("#mode-manual-btn");
+  const modeAiBtn = $("#mode-ai-btn");
+  if (!modeManualBtn || !modeAiBtn) return;
+
+  // Toggle antara Manual dan AI
+  modeManualBtn.addEventListener("click", () => {
+    aiModeActive = false;
+    modeManualBtn.className = "btn btn-primary";
+    modeManualBtn.style.cssText = "min-height:36px;padding:0.4rem 1rem;font-size:13px";
+    modeAiBtn.className = "btn btn-outline";
+    modeAiBtn.style.cssText = "min-height:36px;padding:0.4rem 1rem;font-size:13px";
+    const statusDiv = $("#ai-mode-status");
+    const activeInfo = $("#ai-active-info");
+    const resultPanel = $("#ai-result-panel");
+    if (statusDiv) statusDiv.style.display = "none";
+    if (activeInfo) activeInfo.style.display = "none";
+    if (resultPanel) resultPanel.style.display = "none";
+  });
+
+  modeAiBtn.addEventListener("click", async () => {
+    const statusDiv = $("#ai-mode-status");
+    const activeInfo = $("#ai-active-info");
+    const statusText = $("#ai-status-text");
+
+    modeAiBtn.className = "btn btn-primary";
+    modeAiBtn.style.cssText = "min-height:36px;padding:0.4rem 1rem;font-size:13px";
+    modeManualBtn.className = "btn btn-outline";
+    modeManualBtn.style.cssText = "min-height:36px;padding:0.4rem 1rem;font-size:13px";
+
+    if (statusDiv) statusDiv.style.display = "block";
+    if (statusText) statusText.textContent = "🔍 Memeriksa koneksi AI...";
+
+    const configured = await checkAiStatus();
+
+    if (configured) {
+      aiModeActive = true;
+      if (statusText) {
+        statusText.style.color = "#166534";
+        statusText.textContent = "✅ AI siap digunakan! Pilih foto dan AI akan otomatis menganalisis.";
+      }
+      if (activeInfo) activeInfo.style.display = "block";
+    } else {
+      aiModeActive = false;
+      modeAiBtn.className = "btn btn-outline";
+      modeManualBtn.className = "btn btn-primary";
+      if (statusText) {
+        statusText.style.color = "#dc2626";
+        statusText.textContent = "❌ API key Gemini belum dipasang. Buka Admin → Pengaturan → Konfigurasi AI untuk memasang key.";
+      }
+    }
+  });
+}
+
+// Dipanggil setelah foto dipilih — jika AI mode aktif, analisis foto pertama
+async function runAiOnSelectedFiles(files) {
+  if (!aiModeActive || !files || files.length === 0) return;
+
+  const resultPanel = $("#ai-result-panel");
+  const resultContent = $("#ai-result-content");
+  const spinner = $("#ai-analyzing-spinner");
+
+  if (resultPanel) resultPanel.style.display = "block";
+  if (spinner) spinner.style.display = "inline";
+  if (resultContent) resultContent.innerHTML = "";
+
+  // Analisis foto pertama (untuk multi-foto, ambil representatif)
+  const file = files[0];
+  if (resultContent) {
+    resultContent.innerHTML = `<em>⏳ Menganalisis foto "${file.name}"...</em>`;
+  }
+
+  const result = await analyzePhotoWithAI(file);
+  if (spinner) spinner.style.display = "none";
+
+  if (!result) {
+    if (resultContent) {
+      resultContent.innerHTML = `<span style="color:#dc2626">❌ Gagal menganalisis foto. Cek koneksi atau kuota AI Anda.</span>`;
+    }
+    return;
+  }
+
+  // Isi form dengan hasil AI
+  const titleInput = $("#upload-title-input");
+  const captionInput = $("#upload-caption-input");
+  const placeInput = $("#upload-place-input");
+  const albumSelect = $("#upload-target-album");
+
+  if (titleInput && result.title) titleInput.value = result.title;
+  if (captionInput && result.description) captionInput.value = result.description;
+  if (placeInput && result.place) placeInput.value = result.place;
+
+  // Set album dari saran AI
+  if (albumSelect && result.album) {
+    const opts = Array.from(albumSelect.options);
+    const match = opts.find((o) => o.value === result.album || o.text.includes(result.album));
+    if (match) albumSelect.value = match.value;
+  }
+
+  // Tampilkan ringkasan hasil
+  if (resultContent) {
+    resultContent.innerHTML = `
+      <strong>Judul:</strong> ${escapeHtml(result.title || "-")}<br>
+      <strong>Deskripsi:</strong> ${escapeHtml(result.description || "-")}<br>
+      <strong>Album saran AI:</strong> ${escapeHtml(result.album || "-")}
+      ${result.place ? `<br><strong>Lokasi tebakan:</strong> ${escapeHtml(result.place)}` : ""}
+      <br><span style="font-size:11px;opacity:0.8;margin-top:4px;display:block">✏️ Anda bisa mengedit hasilnya sebelum menyimpan.</span>
+    `;
+  }
+}
+
 // --- ADMIN & PENGATURAN LEMARI KENANGAN ---
 const SETTINGS_STORAGE_KEY = "album_kenangan_settings";
 
@@ -1550,6 +1712,16 @@ function initAdmin() {
   const openAdminModal = () => {
     $("#admin-modal")?.classList.add("is-open");
     loadSettings();
+    // Cek status AI key saat admin modal dibuka
+    checkAiStatus().then((configured) => {
+      const el = $("#ai-key-status");
+      if (el) {
+        el.textContent = configured
+          ? "✅ API key Gemini sudah terpasang dan siap digunakan."
+          : "❌ Belum ada API key. Paste key di bawah lalu klik Simpan Key.";
+        el.style.color = configured ? "#166534" : "#dc2626";
+      }
+    });
   };
 
   const closeAdminModal = () => {
@@ -1611,6 +1783,36 @@ function initAdmin() {
   $("#close-admin-modal")?.addEventListener("click", closeAdminModal);
   $("#admin-modal")?.addEventListener("click", (e) => {
     if (e.target.id === "admin-modal") closeAdminModal();
+  });
+  // Simpan Gemini API Key
+  $("#save-gemini-key-btn")?.addEventListener("click", async () => {
+    const keyInput = $("#gemini-api-key-input");
+    const key = keyInput?.value.trim();
+    if (!key || key.length < 10) {
+      toast("Paste API key Gemini yang valid (dimulai dengan AIza...).");
+      return;
+    }
+    try {
+      const res = await fetch("/api/ai/set-key", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "x-family-pin": getAdminPin() },
+        body: JSON.stringify({ key }),
+      });
+      const data = await res.json();
+      if (res.ok && data.ok) {
+        toast("✅ API key Gemini berhasil disimpan! Fitur AI sudah aktif.");
+        const el = $("#ai-key-status");
+        if (el) {
+          el.textContent = "✅ API key Gemini sudah terpasang dan siap digunakan.";
+          el.style.color = "#166534";
+        }
+        if (keyInput) keyInput.value = "";
+      } else {
+        toast(data.message || "Gagal menyimpan API key.");
+      }
+    } catch {
+      toast("Gagal terhubung ke server.");
+    }
   });
 
   // Tab switcher
